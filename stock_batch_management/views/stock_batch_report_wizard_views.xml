@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stock Batch Report Wizard Form View -->
+    <record id="stock_batch_report_wizard_form_view" model="ir.ui.view">
+        <field name="name">stock.batch.report.wizard.form</field>
+        <field name="model">stock.batch.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Створення звіту по партіях">
+                <sheet>
+                    <group>
+                        <group name="report_type">
+                            <field name="report_type" widget="radio"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="period">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group name="company">
+                            <field name="company_id"/>
+                            <field name="detail_level"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="locations">
+                            <field name="warehouse_ids" widget="many2many_tags" 
+                                   placeholder="Всі склади"
+                                   domain="[('company_id', '=', company_id)]"/>
+                        </group>
+                        <group name="products">
+                            <field name="category_ids" widget="many2many_tags" 
+                                   placeholder="Всі категорії"/>
+                            <field name="nomenclature_ids" widget="many2many_tags" 
+                                   placeholder="Вся номенклатура"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="options">
+                            <field name="show_zero_qty"/>
+                            <field name="show_blocked"/>
+                            <field name="group_by_state" invisible="report_type != 'balance'"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Створити звіт" name="action_generate_report" type="object" 
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Report Wizard Action -->
+    <record id="action_stock_batch_report_wizard" model="ir.actions.act_window">
+        <field name="name">Створити звіт по партіях</field>
+        <field name="res_model">stock.batch.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="stock_batch_report_wizard_form_view"/>
+    </record>
+</odoo>

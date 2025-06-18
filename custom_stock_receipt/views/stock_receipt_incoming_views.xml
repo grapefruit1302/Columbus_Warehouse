@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Спеціальний список номенклатури для вибору в прихідних накладних -->
+        <record id="view_product_nomenclature_selection_list" model="ir.ui.view">
+            <field name="name">product.nomenclature.selection.list</field>
+            <field name="model">product.nomenclature</field>
+            <field name="arch" type="xml">
+                <list string="Вибір номенклатури" create="false" edit="false">
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="full_name" optional="hide"/>
+                    <field name="category_id"/>
+                    <field name="base_uom_id"/>
+                    <field name="price_usd"/>
+                    <field name="barcode" optional="hide"/>
+                    <field name="species" optional="hide"/>
+                    <button name="action_select_for_receipt" string="Вибрати" type="object" 
+                            class="btn-primary" icon="fa-check"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Search view для вибору номенклатури з панеллю категорій -->
+        <record id="view_product_nomenclature_selection_search" model="ir.ui.view">
+            <field name="name">product.nomenclature.selection.search</field>
+            <field name="model">product.nomenclature</field>
+            <field name="arch" type="xml">
+                <search string="Пошук номенклатури">
+                    <field name="name" string="Товар" 
+                           filter_domain="['|', '|', '|', ('name', 'ilike', self), ('full_name', 'ilike', self), ('code', 'ilike', self), ('barcode', 'ilike', self)]"/>
+                    <field name="category_id"/>
+                    <field name="species"/>
+                    
+                    <filter string="Товари" name="filter_goods" domain="[('species', '=', 'option1')]"/>
+                    <filter string="Послуги" name="filter_services" domain="[('species', '=', 'option2')]"/>
+                    <filter string="Набори" name="filter_sets" domain="[('species', '=', 'option3')]"/>
+                    <filter string="Генератори" name="filter_generators" domain="[('species', '=', 'option4')]"/>
+                    <filter string="Паливо" name="filter_fuel" domain="[('species', '=', 'fuel')]"/>
+                    
+                    <separator/>
+                    
+                    <filter string="З штрих-кодом" name="filter_with_barcode" domain="[('barcode', '!=', False)]"/>
+                    <filter string="На складі" name="filter_active" domain="[('active', '=', True)]"/>
+                    
+                    <searchpanel>
+                        <field name="category_id" string="Категорії" 
+                               icon="fa-tags" color="#875A7B" 
+                               enable_counters="1" 
+                               expand="1"/>
+                        <field name="species" string="Вид товару" 
+                               icon="fa-cube" color="#6C7B7F"
+                               enable_counters="1"/>
+                    </searchpanel>
+                </search>
+            </field>
+        </record>
+
+        <!-- Список прихідних накладних -->
+        <record id="view_stock_receipt_incoming_tree" model="ir.ui.view">
+            <field name="name">stock.receipt.incoming.list</field>
+            <field name="model">stock.receipt.incoming</field>
+            <field name="arch" type="xml">
+                <list string="Прихідні накладні" decoration-info="state=='draft'" decoration-success="state=='confirmed'">
+                    <field name="number"/>
+                    <field name="date"/>
+                    <field name="partner_id"/>
+                    <field name="supplier_invoice_number"/>
+                    <field name="warehouse_id"/>
+                    <field name="state" widget="badge" 
+                           decoration-info="state=='draft'" 
+                           decoration-warning="state=='posted'" 
+                           decoration-success="state=='confirmed'"
+                           decoration-danger="state=='cancel'"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Форма прихідної накладної -->
+        <record id="view_stock_receipt_incoming_form" model="ir.ui.view">
+            <field name="name">stock.receipt.incoming.form</field>
+            <field name="model">stock.receipt.incoming</field>
+            <field name="arch" type="xml">
+                <form string="Прихідна накладна">
+                    <style>
+                        .o_field_one2many .o_list_table .o_list_button[name*="view"],
+                        .o_field_one2many .o_list_table button[title="Переглянути"],
+                        .o_field_one2many .o_list_table button[aria-label*="View"] {
+                            display: none !important;
+                        }
+                        
+                        .o_field_one2many .o_list_table th[data-name="price_unit_no_vat"],
+                        .o_field_one2many .o_list_table td[data-name="price_unit_no_vat"],
+                        .o_field_one2many .o_list_table th[data-name="price_unit_with_vat"],
+                        .o_field_one2many .o_list_table td[data-name="price_unit_with_vat"] {
+                            background-color: #e3f2fd !important;
+                        }
+                        
+                        .o_field_one2many .o_list_table th[data-name="amount_no_vat"],
+                        .o_field_one2many .o_list_table td[data-name="amount_no_vat"],
+                        .o_field_one2many .o_list_table th[data-name="amount_with_vat"],
+                        .o_field_one2many .o_list_table td[data-name="amount_with_vat"] {
+                            background-color: #e8f5e8 !important;
+                        }
+                        
+                        .o_field_one2many .o_list_table_footer td {
+                            background-color: #e8f5e8 !important;
+                        }
+                        
+                        .o_field_one2many .o_list_table th.o_list_record_selector,
+                        .o_field_one2many .o_list_table td.o_list_record_selector,
+                        .o_field_one2many .o_list_table th.o_list_record_remove,
+                        .o_field_one2many .o_list_table td.o_list_record_remove {
+                            background-color: transparent !important;
+                        }
+
+                        .underlined_field input {
+                            border-top: none !important;
+                            border-left: none !important;
+                            border-right: none !important;
+                            border-radius: 0 !important;
+                            border-bottom: 1px solid #ccc !important;
+                        }
+                        .underlined_field.o_form_label {
+                            font-weight: bold;
+                        }
+                    </style>
+                    <header>
+                        
+                        <button name="action_post" string="Провести" type="object" 
+                                class="btn-primary" invisible="state != 'draft'"/>
+                        <button name="action_confirm" string="Підтвердити" type="object" 
+                                class="btn-primary" invisible="state != 'posted'"/>
+                        <button name="action_cancel" string="Скасувати" type="object" 
+                                invisible="state not in ['draft', 'posted']"/>
+                        <button name="action_reset_to_draft" string="Повернути в чернетку" type="object" 
+                                invisible="state != 'cancel'"/>
+                        <button name="action_print_receipt" string="Друк накладної" 
+                                type="object" class="btn-info" 
+                                icon="fa-print" invisible="state == 'draft'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,posted,confirmed"/>
+                    </header>
+                    
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                               <field name="number" readonly="1" force_save="1"/>
+                            </h1>
+                        </div>
+                        
+                        <group>
+                            <group>
+                                <field name="date" required="1" widget="date" readonly="state == 'confirmed'" class='underlined_field'/>
+                                <field name="partner_id" required="1" readonly="state == 'confirmed'" class='underlined_field'/>
+                                <field name="supplier_invoice_number" string="Номер розхідної постачальника" readonly="state == 'confirmed'" class='underlined_field'/>
+                            </group>
+                            <group>
+                                <field name="company_id" required="1" 
+                                       context="{'default_company_id': False}"
+                                       class='underlined_field'
+                                       readonly="state == 'confirmed'"/>
+                                <field name="warehouse_id" required="1" readonly="state == 'confirmed'" class='underlined_field'/>
+                                <field name="no_vat" string="Товар без ПДВ" readonly="state == 'confirmed'"/>
+                                <field name="has_serial_products" invisible="1" />
+                            </group>
+                        </group>
+                        
+                        <group invisible="state == 'draft'">
+                            <group>
+                                <field name="posting_time" readonly="1" class='underlined_field'/>
+                                <field name="posting_datetime" readonly="1" class='underlined_field'/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Позиції товарів">
+                                <field name="line_ids" readonly="state == 'confirmed'">
+                                    <list string="Позиції" editable="bottom" create="state != 'confirmed'" delete="state != 'confirmed'" edit="state != 'confirmed'">
+                                        <field name="nomenclature_id" required="1" 
+                                            options="{'no_create': False, 'no_edit': False, 'no_quick_create': True}"
+                                            domain="[('active', '=', True)]"
+                                            string="Товар"
+                                            readonly="parent.state == 'confirmed'"/>
+                                        <field name="qty" required="1" string="Кільк."
+                                            readonly="parent.state == 'confirmed'"/>
+                                        <field name="selected_uom_id" string="Од." 
+                                            domain="[('id', 'in', available_uom_ids)]"
+                                            readonly="parent.state == 'confirmed'"/>
+                                        <button name="action_input_serial_numbers" string="S/N" 
+                                                type="object" 
+                                                class="btn-warning" 
+                                                icon="fa-barcode"
+                                                invisible="not tracking_serial or parent.state == 'draft'"/>
+                                        <field name="serial_count" string="S/N" 
+                                            invisible="not tracking_serial or parent.state == 'draft'"
+                                            decoration-danger="tracking_serial and serial_count != qty"
+                                            decoration-success="tracking_serial and serial_count == qty"/>
+                                        <field name="price_unit_no_vat" string="Ціна без ПДВ"
+                                            readonly="parent.state == 'confirmed'"/>
+                                        <field name="price_unit_with_vat" string="Ціна з ПДВ"
+                                            column_invisible="parent.no_vat"
+                                            readonly="parent.state == 'confirmed'"/>
+                                        <field name="amount_no_vat" readonly="1" string="Сума без ПДВ" 
+                                            sum="Разом"/>
+                                        <field name="amount_with_vat" readonly="1" string="Сума з ПДВ" 
+                                            sum="Разом з ПДВ" column_invisible="parent.no_vat"/>
+                                        <field name="tracking_serial" column_invisible="1"/>
+                                        <field name="available_uom_ids" column_invisible="1"/>
+                                        <field name="product_uom_id" column_invisible="1"/>
+                                        <field name="no_vat" column_invisible="1"/>
+                                        <field name="vat_rate" column_invisible="1"/>
+                                        <field name="vat_amount" column_invisible="1"/>
+                                        <field name="location_id" column_invisible="1"/>
+                                        <field name="lot_ids" column_invisible="1"/>
+                                        <field name="notes" column_invisible="1"/>
+                                        <field name="product_code" column_invisible="1"/>
+                                        <field name="product_name" column_invisible="1"/>
+                                        <field name="serial_numbers" column_invisible="1"/>
+                                        <field name="product_barcode" column_invisible="1"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Примітки">
+                                <field name="notes" placeholder="Додаткова інформація..." readonly="state == 'confirmed'"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- Пошукове представлення -->
+        <record id="view_stock_receipt_incoming_search" model="ir.ui.view">
+            <field name="name">stock.receipt.incoming.search</field>
+            <field name="model">stock.receipt.incoming</field>
+            <field name="arch" type="xml">
+                <search string="Пошук прихідних накладних">
+                    <field name="number"/>
+                    <field name="partner_id"/>
+                    <field name="supplier_invoice_number"/>
+                    <field name="warehouse_id"/>
+                    <filter string="Чернетки" name="draft" domain="[('state','=','draft')]"/>
+                    <filter string="Проведені" name="posted" domain="[('state','=','posted')]"/>
+                    <filter string="Підтверджені" name="confirmed" domain="[('state','=','confirmed')]"/>
+                    <separator/>
+                   <filter string="Сьогодні" name="today" 
+                            domain="[('date','&gt;=',datetime.datetime.combine(context_today(),datetime.time(0,0,0))),
+                                   ('date','&lt;=',datetime.datetime.combine(context_today(),datetime.time(23,59,59)))]"/>
+                    <group expand="0" string="Групувати за">
+                        <filter string="Постачальник" name="group_partner" context="{'group_by':'partner_id'}"/>
+                        <filter string="Склад" name="group_warehouse" context="{'group_by':'warehouse_id'}"/>
+                        <filter string="Статус" name="group_state" context="{'group_by':'state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Wizard для вибору часу проведення -->
+        <record id="view_stock_recept_posting_wizard_form" model="ir.ui.view">
+            <field name="name">stock.receipt.posting.wizard.form</field>
+            <field name="model">stock.receipt.posting.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Проведення документа">
+                    <group>
+                        <field name="receipt_id" invisible="1"/>
+                        <field name="posting_time" widget="radio" 
+                               options="{'horizontal': false}"/>
+                    </group>
+                    <group invisible="posting_time != 'custom_time'">
+                        <group>
+                            <field name="custom_hour" string="Година (0-23)"/>
+                        </group>
+                        <group>
+                            <field name="custom_minute" string="Хвилина (0-59)"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button name="action_confirm_posting" string="Провести" 
+                                type="object" class="btn-primary"/>
+                        <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+
+
+        <!-- Дія для прихідних накладних -->
+        <record id="action_stock_receipt_incoming" model="ir.actions.act_window">
+            <field name="name">Прихідні накладні</field>
+            <field name="res_model">stock.receipt.incoming</field>
+            <field name="view_mode">list,form</field>
+            <field name="context">{'_get_child_companies_domain': 'stock.receipt.incoming,_get_child_companies_domain'}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Створіть першу прихідну накладну
+                </p>
+                <p>
+                    Прихідні накладні використовуються для оформлення надходження товарів від постачальників.
+                </p>
+            </field>
+        </record>
+
+        <!-- Дія для вибору номенклатури в модальному вікні -->
+        <record id="action_select_nomenclature_modal" model="ir.actions.act_window">
+            <field name="name">Вибір номенклатури</field>
+            <field name="res_model">product.nomenclature</field>
+            <field name="view_mode">list</field>
+            <field name="view_id" ref="view_product_nomenclature_selection_list"/>
+            <field name="search_view_id" ref="view_product_nomenclature_selection_search"/>
+            <field name="target">new</field>
+            <field name="context">{'dialog_size': 'extra-large'}</field>
+            <field name="domain">[('active', '=', True)]</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Реєстрація звіту -->
+    <record id="action_report_stock_balance" model="ir.actions.report">
+        <field name="name">Залишки товарів на складах</field>
+        <field name="model">stock.balance</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">stock_balance.report_stock_balance_template</field>
+        <field name="report_file">stock_balance.report_stock_balance_template</field>
+        <field name="binding_model_id" ref="model_stock_balance"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Шаблон звіту -->
+    <template id="report_stock_balance_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="balance">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            .report-header {
+                                text-align: center;
+                                margin-bottom: 20px;
+                                border-bottom: 2px solid #000;
+                                padding-bottom: 10px;
+                            }
+                            .report-title {
+                                font-size: 18px;
+                                font-weight: bold;
+                                margin-bottom: 10px;
+                            }
+                            .report-info {
+                                font-size: 14px;
+                                margin-bottom: 5px;
+                            }
+                            .balance-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-top: 20px;
+                                font-size: 12px;
+                            }
+                            .balance-table th, .balance-table td {
+                                border: 1px solid #000;
+                                padding: 5px;
+                                text-align: left;
+                            }
+                            .balance-table th {
+                                background-color: #f0f0f0;
+                                font-weight: bold;
+                                text-align: center;
+                            }
+                            .balance-table .text-right {
+                                text-align: right;
+                            }
+                            .balance-table .text-center {
+                                text-align: center;
+                            }
+                            .batch-row {
+                                background-color: #f9f9f9;
+                                font-style: italic;
+                            }
+                            .serial-row {
+                                background-color: #f5f5f5;
+                                font-size: 11px;
+                            }
+                            .total-row {
+                                background-color: #e0e0e0;
+                                font-weight: bold;
+                            }
+                            .report-footer {
+                                margin-top: 30px;
+                                text-align: right;
+                                font-size: 12px;
+                            }
+                            .indent {
+                                padding-left: 20px;
+                            }
+                            .indent2 {
+                                padding-left: 40px;
+                            }
+                        </style>
+
+                        <!-- Заголовок звіту -->
+                        <div class="report-header">
+                            <div class="report-title">Залишки товарів на складах</div>
+                            <div class="report-info">
+                                <t t-if="balance.date_to">
+                                    <span t-esc="balance.date_to.strftime('%d.%m.%y')" />
+                                </t>
+                            </div>
+                            <div class="report-info">По управлінському обліку. По всіх товарах.</div>
+                            <t t-if="balance.warehouse_ids">
+                                <div class="report-info">
+                                    По складу 
+                                    <t t-foreach="balance.warehouse_ids" t-as="wh">
+                                        "<span t-field="wh.name"/>"<t t-if="not wh_last">, </t>
+                                    </t>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Параметри звіту -->
+                        <div style="margin-bottom: 15px;">
+                            <strong>Період:</strong> 
+                            <span t-field="balance.date_from"/> - <span t-field="balance.date_to"/><br/>
+                            <strong>Компанії:</strong> 
+                            <t t-foreach="balance.company_ids" t-as="company">
+                                <span t-field="company.name"/>
+                                <t t-if="not company_last">, </t>
+                            </t><br/>
+                            <t t-if="balance.warehouse_ids">
+                                <strong>Склади:</strong> 
+                                <t t-foreach="balance.warehouse_ids" t-as="warehouse">
+                                    <span t-field="warehouse.name"/>
+                                    <t t-if="not warehouse_last">, </t>
+                                </t><br/>
+                            </t>
+                            <t t-if="balance.category_ids">
+                                <strong>Категорії:</strong> 
+                                <t t-foreach="balance.category_ids" t-as="category">
+                                    <span t-field="category.name"/>
+                                    <t t-if="not category_last">, </t>
+                                </t><br/>
+                            </t>
+                        </div>
+
+                        <!-- Таблиця залишків -->
+                        <table class="balance-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%;">Артикул</th>
+                                    <th style="width: 35%;">Товар</th>
+                                    <th style="width: 15%;">Склад</th>
+                                    <th style="width: 10%;" class="text-center">Залишок</th>
+                                    <th style="width: 5%;">Од.</th>
+                                    <th style="width: 15%;" class="text-center">Сума USD</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-set="total_quantity" t-value="0"/>
+                                <t t-set="total_amount" t-value="0"/>
+                                
+                                <t t-foreach="balance.line_ids" t-as="line">
+                                    <tr t-att-class="'batch-row' if line.is_batch_line else 'serial-row' if line.is_serial_line else ''">
+                                        <!-- Артикул -->
+                                        <td>
+                                            <t t-if="not line.is_batch_line and not line.is_serial_line">
+                                                <span t-field="line.product_code"/>
+                                            </t>
+                                        </td>
+                                        
+                                        <!-- Назва товару -->
+                                        <td>
+                                            <t t-if="line.is_batch_line">
+                                                <span class="indent">- Партія: <span t-field="line.batch_name"/></span>
+                                            </t>
+                                            <t t-elif="line.is_serial_line">
+                                                <span class="indent2">S/N: <span t-field="line.serial_number"/></span>
+                                            </t>
+                                            <t t-else="1">
+                                                <span t-field="line.product_name"/>
+                                            </t>
+                                        </td>
+                                        
+                                        <!-- Склад -->
+                                        <td>
+                                            <t t-if="not line.is_batch_line and not line.is_serial_line">
+                                                <span t-field="line.warehouse_name"/>
+                                            </t>
+                                            <t t-elif="line.is_batch_line">
+                                                <span t-field="line.date_received"/>
+                                            </t>
+                                        </td>
+                                        
+                                        <!-- Кількість -->
+                                        <td class="text-right">
+                                            <span t-field="line.quantity" t-options="{'widget': 'float', 'precision': 3}"/>
+                                            <t t-if="not line.is_batch_line and not line.is_serial_line">
+                                                <t t-set="total_quantity" t-value="total_quantity + line.quantity"/>
+                                            </t>
+                                        </td>
+                                        
+                                        <!-- Одиниця виміру -->
+                                        <td class="text-center">
+                                            <span t-field="line.uom_name"/>
+                                        </td>
+                                        
+                                        <!-- Сума -->
+                                        <td class="text-right">
+                                            <span t-field="line.amount_no_vat" t-options="{'widget': 'monetary', 'display_currency': False}"/>
+                                            <t t-if="not line.is_batch_line and not line.is_serial_line">
+                                                <t t-set="total_amount" t-value="total_amount + line.amount_no_vat"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </t>
+                                
+                                <!-- Підсумковий рядок -->
+                                <tr class="total-row">
+                                    <td colspan="3"><strong>РАЗОМ:</strong></td>
+                                    <td class="text-right">
+                                        <strong t-esc="'%.3f' % total_quantity"/>
+                                    </td>
+                                    <td></td>
+                                    <td class="text-right">
+                                        <strong t-esc="'%.2f' % total_amount"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Підвал звіту -->
+                        <div class="report-footer">
+                            <div>Дата формування: <t t-esc="datetime.datetime.now().strftime('%d.%m.%Y %H:%M')"/></div>
+                            <div>Користувач: <span t-esc="env.user.name"/></div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

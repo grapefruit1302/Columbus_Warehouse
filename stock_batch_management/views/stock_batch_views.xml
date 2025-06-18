@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stock Batch Form View -->
+    <record id="stock_batch_form_view" model="ir.ui.view">
+        <field name="name">stock.batch.form</field>
+        <field name="model">stock.batch</field>
+        <field name="arch" type="xml">
+            <form string="Партія товару">
+                <header>
+                    <button name="action_block_batch" string="Заблокувати" type="object" 
+                            class="btn-warning" invisible="is_active == False"/>
+                    <button name="action_unblock_batch" string="Розблокувати" type="object" 
+                            class="btn-success" invisible="is_active == True"/>
+                    <field name="state" widget="statusbar" statusbar_visible="active,depleted,expired,blocked"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_movements" type="object" class="oe_stat_button" icon="fa-exchange">
+                            <field name="movement_ids" widget="statinfo" string="Рухи"/>
+                        </button>
+                    </div>
+                    
+                    <div class="oe_title">
+                        <h1>
+                            <field name="batch_number" readonly="1"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group name="main_info">
+                            <field name="nomenclature_id" readonly="1"/>
+                            <field name="source_document_type" readonly="1"/>
+                            <field name="source_document_number" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group name="quantities">
+                            <field name="initial_qty" readonly="1"/>
+                            <field name="current_qty"/>
+                            <field name="uom_id" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="dates">
+                            <field name="date_created" readonly="1"/>
+                            <field name="expiry_date"/>
+                        </group>
+                        <group name="status">
+                            <field name="is_active"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Серійні номери" invisible="serial_numbers == False">
+                            <field name="serial_numbers" widget="text"/>
+                        </page>
+                        <page string="Примітки">
+                            <field name="notes" widget="text"/>
+                        </page>
+                        <page string="Рухи партії">
+                            <field name="movement_ids" readonly="1">
+                                <list string="Рухи">
+                                    <field name="date"/>
+                                    <field name="movement_type"/>
+                                    <field name="operation_type"/>
+                                    <field name="qty"/>
+                                    <field name="uom_id"/>
+                                    <field name="document_reference"/>
+                                    <field name="user_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Stock Batch List View -->
+    <record id="stock_batch_list_view" model="ir.ui.view">
+        <field name="name">stock.batch.list</field>
+        <field name="model">stock.batch</field>
+        <field name="arch" type="xml">
+            <list string="Партії товарів" default_order="date_created desc">
+                <field name="batch_number"/>
+                <field name="nomenclature_id"/>
+                <field name="source_document_number"/>
+                <field name="initial_qty"/>
+                <field name="current_qty"/>
+                <field name="uom_id"/>
+                <field name="date_created"/>
+                <field name="expiry_date"/>
+                <field name="state" widget="badge"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Stock Batch Search View -->
+    <record id="stock_batch_search_view" model="ir.ui.view">
+        <field name="name">stock.batch.search</field>
+        <field name="model">stock.batch</field>
+        <field name="arch" type="xml">
+            <search string="Пошук партій">
+                <field name="batch_number"/>
+                <field name="nomenclature_id"/>
+                <field name="source_document_number"/>
+                
+                <filter string="Активні" name="active" domain="[('state', '=', 'active')]"/>
+                <filter string="Вичерпані" name="depleted" domain="[('state', '=', 'depleted')]"/>
+                <filter string="Прострочені" name="expired" domain="[('state', '=', 'expired')]"/>
+                <filter string="Заблоковані" name="blocked" domain="[('state', '=', 'blocked')]"/>
+                
+                <separator/>
+                <filter string="З наявністю" name="with_qty" domain="[('current_qty', '>', 0)]"/>
+                
+                <separator/>
+                <filter string="Прихідні накладні" name="receipts" domain="[('source_document_type', '=', 'receipt')]"/>
+                
+                <group expand="0" string="Групування">
+                    <filter string="Номенклатура" name="group_nomenclature" context="{'group_by': 'nomenclature_id'}"/>
+                    <filter string="Статус" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Тип документу" name="group_source_type" context="{'group_by': 'source_document_type'}"/>
+                    <filter string="Дата створення" name="group_date" context="{'group_by': 'date_created'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Stock Batch Action -->
+    <record id="action_stock_batch" model="ir.actions.act_window">
+        <field name="name">Партії товарів</field>
+        <field name="res_model">stock.batch</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="stock_batch_search_view"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Створіть першу партію товару!
+            </p>
+            <p>
+                Партії створюються автоматично при проведенні прихідних накладних.
+                Вони відстежують кількість товару згідно принципу FIFO.
+            </p>
+        </field>
+    </record>
+</odoo>

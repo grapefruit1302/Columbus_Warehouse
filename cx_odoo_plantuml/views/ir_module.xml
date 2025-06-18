@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+
+    Copyright (C) 2020 Cetmix OÜ
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU LESSER GENERAL PUBLIC LICENSE as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU LESSER GENERAL PUBLIC LICENSE for more details.
+
+    You should have received a copy of the GNU LESSER GENERAL PUBLIC LICENSE
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<odoo>
+    <!--##########
+        # Module #
+        ##########-->
+    <!--## Form ##-->
+    <record id="cx_ir_module_form" model="ir.ui.view">
+        <field name="name">cetmix.ir.module.form</field>
+        <field name="model">ir.module.module</field>
+        <field name="inherit_id" ref="base.module_form" />
+        <field name="arch" type="xml">
+            <!-- Add button -->
+            <xpath
+                expr="//div[button[@name='button_immediate_upgrade']]"
+                position="inside"
+            >
+                <button
+                    type="object"
+                    name="button_plantuml_export"
+                    string="Export PlantUML"
+                    class="oe_highlight"
+                />
+            </xpath>
+        </field>
+    </record>
+    <!--## Kanban ##-->
+    <record id="cx_ir_module_kanban" model="ir.ui.view">
+        <field name="name">cetmix.ir.module.kanban</field>
+        <field name="model">ir.module.module</field>
+        <field name="inherit_id" ref="base.module_view_kanban" />
+        <field name="arch" type="xml">
+            <xpath expr="//kanban/templates/t[@t-name='menu']" position="inside">
+                <a
+                    name="button_plantuml_export"
+                    type="object"
+                    role="menuitem"
+                    class="dropdown-item"
+                >
+                    PlantUML export
+                </a>
+            </xpath>
+        </field>
+    </record>
+</odoo>

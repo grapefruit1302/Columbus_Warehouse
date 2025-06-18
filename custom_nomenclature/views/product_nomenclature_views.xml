@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- СПОЧАТКУ ВИЗНАЧАЄМО ВСІ VIEWS -->
+        
+        <!-- List View для product.nomenclature.category -->
+        <record id="view_product_nomenclature_category_list" model="ir.ui.view">
+            <field name="name">product.nomenclature.category.list</field>
+            <field name="model">product.nomenclature.category</field>
+            <field name="arch" type="xml">
+                <list string="Product Categories">
+                    <field name="name"/>
+                    <field name="product_count"/>
+                </list>
+            </field>
+        </record>
+
+
+        <!-- Оновлений view для вибору номенклатури з кнопкою редагування -->
+        <record id="view_product_nomenclature_selection_list_with_edit" model="ir.ui.view">
+            <field name="name">product.nomenclature.selection.list.with.edit</field>
+            <field name="model">product.nomenclature</field>
+            <field name="arch" type="xml">
+                <list string="Вибір номенклатури" create="true" edit="false">
+                    <field name="code" string="Код"/>
+                    <field name="name" string="Назва"/>
+                    <field name="barcode" string="Штрих-код"/>
+                    <field name="tracking_serial" string="S/N" widget="boolean_toggle"/>
+                    <field name="base_uom_id" string="Базова одиниця"/>
+                    <field name="price_usd" string="Ціна (USD)"/>
+                    <field name="category_id" string="Категорія"/>
+                    <!-- Кнопка редагування -->
+                    <button name="action_open_edit_modal" 
+                            string="Редагувати" 
+                            type="object" 
+                            class="btn-primary" 
+                            icon="fa-edit"
+                            context="{'from_selection_modal': True}"/>
+                </list>
+            </field>
+        </record>
+
+
+        <!-- Оновлена дія для модального вікна з кнопкою редагування -->
+        <record id="action_select_nomenclature_modal_disposal_with_edit" model="ir.actions.act_window">
+            <field name="name">Вибір номенклатури</field>
+            <field name="res_model">product.nomenclature</field>
+            <field name="view_mode">list</field>
+            <field name="view_id" ref="view_product_nomenclature_selection_list_with_edit"/>
+            <field name="search_view_id" ref="custom_stock_receipt.view_product_nomenclature_selection_search"/>
+            <field name="target">new</field>
+            <field name="context">{'dialog_size': 'extra-large', 'from_disposal_selection': True}</field>
+            <field name="domain">[('active', '=', True)]</field>
+        </record>
+
+        <!-- Form View для product.nomenclature.category -->
+        <record id="view_product_nomenclature_category_form" model="ir.ui.view">
+            <field name="name">product.nomenclature.category.form</field>
+            <field name="model">product.nomenclature.category</field>
+            <field name="arch" type="xml">
+                <form string="Product Category">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_open_products" type="object" class="oe_stat_button" icon="fa-th-list">
+                                <field name="product_count" string="Products" widget="statinfo"/>
+                            </button>
+                        </div>
+                        <group>
+                            <field name="name"/>
+                            <field name="parent_id"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Tree View для product.nomenclature -->
+        <record id="view_product_nomenclature_list" model="ir.ui.view">
+            <field name="name">product.nomenclature.list</field>
+            <field name="model">product.nomenclature</field>
+            <field name="arch" type="xml">
+                <list string="Products">
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="barcode"/>
+                    <field name="tracking_serial"/>
+                    <field name="base_uom_id"/>
+                    <field name="price_usd"/>
+                    <field name="category_id"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Form View untuk product.nomenclature -->
+        <record id="view_product_nomenclature_form" model="ir.ui.view">
+            <field name="name">product.nomenclature.form</field>
+            <field name="model">product.nomenclature</field>
+            <field name="arch" type="xml">
+                <form string="Product">
+                    <style>
+                        .underlined_field input {
+                            border-top: none !important;
+                            border-left: none !important;
+                            border-right: none !important;
+                            border-radius: 0 !important;
+                            border-bottom: 1px solid #ccc !important;
+                        }
+                        .underlined_field.o_form_label {
+                            font-weight: bold;
+                        }
+                        /* Захист від впливу стилів на oe_chatter */
+                        .oe_chatter input,
+                        .oe_chatter .o_form_label {
+                            border: none !important;
+                            border-bottom: none !important;
+                            font-weight: normal !important;
+                        }
+        
+                        .o_form_view {
+                            display: flex;
+                            flex-direction: row;
+                            width: 100%;
+                        }
+                        .o_form_sheet_bg {
+                            flex: 1;
+                            width: 70% !important; /* Форма займає 70% ширини */
+                            max-width: 70% !important;
+                            margin-right: 0 !important;
+                        }
+                        .oe_chatter {
+                            width: 30% !important; /* Чат займає 30% ширини */
+                            max-width: 30% !important;
+                            height: 100vh; /* Висота на всю доступну область */
+                            overflow-y: auto; /* Скрол, якщо вміст чату великий */
+                            border-left: 1px solid #ccc;
+                            padding-left: 10px;
+                            position: sticky;
+                            top: 0;
+                        }
+                    </style>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_assign_barcode" type="object" class="oe_stat_button" icon="fa-barcode" string="Призначити штрих-код"/>
+                            <button name="action_print_label" string="Етикетка" type="object" class="oe_highlight" icon="fa-print" invisible="not barcode"/>
+                        </div>
+                        <group>
+                            <group>
+                                <separator string="Загальне"/>
+                                <field name="code" class="underlined_field"/>
+                                <field name="name" class="underlined_field"/>
+                                <field name="full_name" class="underlined_field"/>
+                                <field name="category_id" class="underlined_field"/>
+                                <field name="species" class="underlined_field"/>
+                            </group>
+                            <group>
+                                <separator string="Облік"/>
+                                <field name="base_uom_id" class="underlined_field" domain="[('category_id.name', '=', 'Одиниці')]" readonly="id" force_save="1"/>
+                                <field name="barcode" class="underlined_field"/>
+                                <field name="return_mechanic"/>
+                                <field name="tracking_serial"/>
+                                <!-- Поля для Палива та Генератора -->
+                                <field name="fuel_type" class="underlined_field" invisible="species not in ('fuel', 'option4')"/>
+                                <field name="fuel_consumption_rate" class="underlined_field" invisible="species != 'option4'"/>
+                                <field name="oil_consumption" class="underlined_field" invisible="species != 'option4'"/>
+                            </group>
+                        </group>
+                        <separator string="Ціна"/>
+                        <group orientation="horizontal">
+                            <group>
+                                <field name="price_uah" class="underlined_field"/>
+                            </group>
+                            <group>
+                                <field name="price_usd" class="underlined_field"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Коментар">
+                                <field name="description" placeholder="Додай коментар до товару"/>
+                            </page>
+                            <page string="Одиниці">
+                                <field name="uom_line_ids" context="{'default_product_id': id}">
+                                    <list editable="bottom">
+                                        <field name="uom_id" required="1"/>
+                                        <field name="coefficient" required="1"/>
+                                        <field name="is_default" string="За замовчуванням"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Категорії">
+                                <field name="category_ids" domain="[('complete_name', 'not ilike', 'All')]">
+                                    <list editable="bottom">
+                                        <field name="name" string="Назва категорії"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- Search View для product.nomenclature -->
+        <record id="view_product_nomenclature_search" model="ir.ui.view">
+            <field name="name">product.nomenclature.search</field>
+            <field name="model">product.nomenclature</field>
+            <field name="arch" type="xml">
+                <search string="Product Nomenclature">
+                    <field name="name" string="Product" filter_domain="['|', '|', ('name', 'ilike', self), ('code', 'ilike', self), ('barcode', 'ilike', self)]"/>
+                    <field name="category_id"/>
+                    <filter string="Tracked by Serial Numbers" name="tracking_serial" domain="[('tracking_serial', '=', True)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Category" name="groupby_category" context="{'group_by': 'category_id'}"/>
+                    </group>
+                    <searchpanel>
+                        <field name="category_id" string="Категорії" enable_counters="1" expand="1"/>
+                    </searchpanel>
+                </search>
+            </field>
+        </record>
+
+        <!-- ТЕПЕР ВИЗНАЧАЄМО ACTIONS (після того як views вже існують) -->
+        
+        <!-- Дія для Номенклатури товарів -->
+        <record id="action_product_nomenclature" model="ir.actions.act_window" forcecreate="False">
+            <field name="name">Номенклатура товарів</field>
+            <field name="res_model">product.nomenclature</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_product_nomenclature_list"/>
+        </record>
+
+        <!-- Дія для Категорій товарів -->
+        <record id="action_product_nomenclature_category" model="ir.actions.act_window" forcecreate="False">
+            <field name="name">Категорії товарів</field>
+            <field name="res_model">product.nomenclature.category</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_product_nomenclature_category_list"/>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Послідовність для переміщень товарів -->
+        <record id="seq_stock_transfer" model="ir.sequence">
+            <field name="name">Переміщення товарів</field>
+            <field name="code">stock.transfer</field>
+            <field name="prefix">ПТ-</field>
+            <field name="padding">8</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

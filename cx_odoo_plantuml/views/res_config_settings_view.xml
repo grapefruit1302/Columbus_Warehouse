@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+
+    Copyright (C) 2020 Cetmix OÜ
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU LESSER GENERAL PUBLIC LICENSE as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU LESSER GENERAL PUBLIC LICENSE for more details.
+
+    You should have received a copy of the GNU LESSER GENERAL PUBLIC LICENSE
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<odoo>
+    <!-- ### Add New Settings To existing Setting Page ### -->
+    <record id="cx_plantuml_res_config_settings_for" model="ir.ui.view">
+        <field name="name">cx.plantuml.config.settings.form</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//form[hasclass('oe_form_configuration')]" position="inside">
+                <h2>Cetmix PlantUML Settings</h2>
+                <div
+                    class="row mt16 o_settings_container"
+                    id="cetmix_plantuml_settings"
+                    title="Cetmix PlantUML Settings"
+                >
+                    <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="cetmix_plantuml_server_url">
+                            <label for="cetmix_plantuml_server_url" />
+                            <div class="text-muted">
+                                PlantUML server used for rendering previews
+                            </div>
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <field name="cetmix_plantuml_server_url" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="cx_max_selection">
+                            <label for="cx_max_selection" />
+                            <div class="text-muted">
+                                If the number of options for Selection field exceeds this amount it will be shortened to "x options"
+                            </div>
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <field name="cx_max_selection" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

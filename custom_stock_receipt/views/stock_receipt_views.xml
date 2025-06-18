@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Search view для фільтрів на One2many полі -->
+        <record id="view_stock_receipt_documents_line_search" model="ir.ui.view">
+            <field name="name">stock.receipt.documents.line.search</field>
+            <field name="model">stock.receipt.documents.line</field>
+            <field name="arch" type="xml">
+                <search string="Фільтри приходу">
+                    <field name="number" string="Номер" filter_domain="[('number', 'ilike', self)]"/>
+                    <field name="partner_name" string="Партнер" filter_domain="[('partner_name', 'ilike', self)]"/>
+                    <field name="warehouse_name" string="Склад" filter_domain="[('warehouse_name', 'ilike', self)]"/>
+                    
+                    <filter string="Чернетки" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Підтверджені" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                    <filter string="Виконані" name="done" domain="[('state', '=', 'done')]"/>
+                    <filter string="Скасовані" name="cancel" domain="[('state', '=', 'cancel')]"/>
+                    
+                    <separator/>
+                    <filter string="Прихідні накладні" name="receipts" domain="[('document_type', '=', 'receipt')]"/>
+                    <filter string="Акти оприходування" name="disposals" domain="[('document_type', '=', 'disposal')]"/>
+                    <filter string="Повернення з сервісу" name="returns" domain="[('document_type', '=', 'return')]"/>
+                    
+                    <separator/>
+                    <filter string="За сьогодні" name="today" domain="[('date', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('date', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
+                    <filter string="За тиждень" name="week" domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="За місяць" name="month" domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                    
+                    <group expand="0" string="Групувати за">
+                        <filter string="Типом документа" name="group_document_type" context="{'group_by': 'document_type_display'}"/>
+                        <filter string="Статусом" name="group_state" context="{'group_by': 'state'}"/>
+                        <filter string="Складом" name="group_warehouse" context="{'group_by': 'warehouse_name'}"/>
+                        <filter string="Партнером" name="group_partner" context="{'group_by': 'partner_name'}"/>
+                        <filter string="Датою" name="group_date" context="{'group_by': 'date:day'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Form view з таблицею -->
+        <record id="view_stock_receipt_dashboard_form" model="ir.ui.view">
+            <field name="name">stock.receipt.dashboard.form</field>
+            <field name="model">stock.receipt.dashboard</field>
+            <field name="arch" type="xml">
+                <form string="Прихід товарів" class="o_form_sheet_bg">
+                    <sheet class="o_form_sheet" style="width: 100%; max-width: none;">
+                        
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_create_receipt" 
+                                    type="object" 
+                                    class="oe_stat_button" 
+                                    icon="fa-plus-circle" 
+                                    string="Створити прихідну накладну"/>
+                            <button name="action_create_disposal" 
+                                    type="object" 
+                                    class="oe_stat_button" 
+                                    icon="fa-plus-square" 
+                                    string="Створити акт оприходування"/>
+                            <button name="action_create_return" 
+                                    type="object" 
+                                    class="oe_stat_button" 
+                                    icon="fa-reply" 
+                                    string="Створити повернення з сервісу"/>
+                        </div>
+                        
+                        <div class="oe_title">
+                            <h1>Прихід товарів</h1>
+                        </div>
+                        
+                        <field name="all_documents_ids" widget="one2many" nolabel="1" style="width: 100%;" 
+                               context="{'search_view_ref': 'custom_stock_receipt.view_stock_receipt_documents_line_search'}">
+                            <list string="Документи"
+                                class="o_list_view o_list_table_ungrouped"
+                                decoration-info="state=='draft'"
+                                decoration-warning="state=='confirmed'"
+                                decoration-success="state=='done'"
+                                decoration-muted="state=='cancel'"
+                                create="false"
+                                edit="false"
+                                delete="false"
+                                has_selectors="0">
+                                <field name="document_type_display" string="Тип операції"/>
+                                <field name="number" string="Номер"/>
+                                <field name="date" string="Дата"/>
+                                <field name="partner_name" string="Партнер/Сервіс"/>
+                                <field name="warehouse_name" string="Склад"/>
+                                <!-- <field name="total_qty" string="Кількість" sum="Загалом"/> -->
+                                <field name="state" string="Статус" widget="badge"
+                                    decoration-info="state=='draft'"
+                                    decoration-warning="state=='confirmed'"
+                                    decoration-success="state=='done'"
+                                    decoration-danger="state=='cancel'"/>
+                                <field name="document_type" invisible="1"/>
+                                <field name="document_id" invisible="1"/>
+                                <field name="state_display" invisible="1"/>
+                                <button name="action_open_document"
+                                        type="object"
+                                        string="Відкрити"
+                                        class="btn btn-primary btn-sm"
+                                        icon="fa-external-link"/>
+                            </list>
+                        </field>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Дія для зведеної сторінки -->
+        <record id="action_stock_receipt_dashboard" model="ir.actions.act_window">
+            <field name="name">Прихід</field>
+            <field name="res_model">stock.receipt.dashboard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_stock_receipt_dashboard_form"/>
+            <field name="target">current</field>
+        </record>
+    </data>
+</odoo>

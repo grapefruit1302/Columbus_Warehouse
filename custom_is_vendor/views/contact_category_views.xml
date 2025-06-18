@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_contact_category_form" model="ir.ui.view">
+        <field name="name">contact.category.form</field>
+        <field name="model">contact.category</field>
+        <field name="arch" type="xml">
+            <form string="Категорія контакту">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="sequence"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_contact_category_tree" model="ir.ui.view">
+        <field name="name">contact.category.tree</field>
+        <field name="model">contact.category</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_contact_categories" model="ir.actions.act_window">
+        <field name="name">Категорії контактів</field>
+        <field name="res_model">contact.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem
+        id="menu_contact_categories"
+        name="Категорії контактів"
+        parent="contacts.menu_contacts"
+        action="action_contact_categories"
+        sequence="10"/>
+</odoo>

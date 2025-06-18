@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend Contact Form View -->
+    <record id="view_partner_form_inherit_custom" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.custom</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="is_supplier"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend Contact List View with Sidebar Filter -->
+    <record id="view_partner_tree_inherit_custom" model="ir.ui.view">
+        <field name="name">res.partner.tree.inherit.custom</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <field name="is_supplier" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend Contact Search View for Category Filters -->
+    <record id="view_partner_search_inherit_custom" model="ir.ui.view">
+        <field name="name">res.partner.search.inherit.custom</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='filters']" position="inside">
+                <filter string="Співробітники" name="employee_filter" domain="[('category_id', '=', ref('custom_contacts.category_employee'))]"/>
+                <filter string="Компанії" name="company_filter" domain="[('category_id', '=', ref('custom_contacts.category_company'))]"/>
+                <filter string="Гілки компаній" name="branch_filter" domain="[('category_id', '=', ref('custom_contacts.category_branch'))]"/>
+                <filter string="Постачальники" name="supplier_filter" domain="[('category_id', '=', ref('custom_contacts.category_supplier'))]"/>
+                <filter string="Є постачальником" name="is_supplier_filter" domain="[('is_supplier', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

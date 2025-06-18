@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_plantuml_wizard,module_wizard_user,model_cx_plantuml_export_wiz,base.group_system,1,1,1,1
+access_plantuml_wizard_download,module_wizard_user,model_cx_plantuml_export_wiz_download,base.group_system,1,1,1,1

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Form View for stock.balance.wizard -->
+        <record id="view_stock_balance_wizard_form" model="ir.ui.view">
+            <field name="name">stock.balance.wizard.form</field>
+            <field name="model">stock.balance.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Створення звіту по залишках">
+                    <style>
+                        .o_form_sheet {
+                            max-width: 800px;
+                        }
+                        .filter_section {
+                            border: 1px solid #dee2e6;
+                            border-radius: 8px;
+                            padding: 15px;
+                            margin: 10px 0;
+                            background-color: #f8f9fa;
+                        }
+                        .period_buttons button {
+                            margin: 2px;
+                        }
+                    </style>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Назва звіту..."/>
+                            </h1>
+                        </div>
+                        
+                        <group>
+                            <group string="Період звітності">
+                                <field name="period_type" widget="radio" options="{'horizontal': false}"/>
+                                <field name="date_from" invisible="period_type != 'custom'"/>
+                                <field name="date_to" invisible="period_type != 'custom'"/>
+                                
+                                <div class="alert alert-info" role="alert" invisible="period_type == 'custom'">
+                                    <field name="date_from" readonly="1" nolabel="1"/> - 
+                                    <field name="date_to" readonly="1" nolabel="1"/>
+                                </div>
+                            </group>
+                            
+                            <group string="Тип звіту">
+                                <field name="report_type" readonly="1"/>
+                            </group>
+                        </group>
+                        
+                        <div class="filter_section">
+                            <h3>Фільтри</h3>
+                            <group>
+                                <group string="Структура">
+                                    <field name="company_ids" widget="many2many_tags" 
+                                           placeholder="Всі компанії"/>
+                                    <field name="warehouse_ids" widget="many2many_tags" 
+                                           placeholder="Всі склади"/>
+                                </group>
+                                <group string="Номенклатура">
+                                    <field name="category_ids" widget="many2many_tags" 
+                                           placeholder="Всі категорії"/>
+                                    <field name="group_ids" widget="many2many_tags" 
+                                           placeholder="Всі групи товарів"/>
+                                </group>
+                            </group>
+                        </div>
+                        
+                        <div class="filter_section">
+                            <h3>Додаткові опції</h3>
+                            <group>
+                                <group>
+                                    <field name="show_only_positive"/>
+                                    <field name="show_batches_details"/>
+                                </group>
+                                <group>
+                                    <field name="show_serial_numbers"/>
+                                </group>
+                            </group>
+                        </div>
+                        
+                        <div class="alert alert-info" role="alert">
+                            <i class="fa fa-info-circle"/> 
+                            <strong>Підказка:</strong> Залиште фільтри порожніми для включення всіх записів відповідного типу.
+                            Звіт показує залишки товарів на вказану дату за принципом FIFO.
+                        </div>
+                    </sheet>
+                    
+                    <footer>
+                        <button name="action_generate_report" string="Створити звіт" 
+                                type="object" class="btn-primary" icon="fa-file-text-o"/>
+                        <button name="action_preview_report" string="Попередній перегляд" 
+                                type="object" class="btn-secondary" icon="fa-eye"/>
+                        <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Action for stock.balance.wizard -->
+        <record id="action_stock_balance_wizard" model="ir.actions.act_window">
+            <field name="name">Звіт по залишках товарів</field>
+            <field name="res_model">stock.balance.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">current</field>
+            <field name="context">{'dialog_size': 'medium'}</field>
+        </record>
+    </data>
+</odoo>

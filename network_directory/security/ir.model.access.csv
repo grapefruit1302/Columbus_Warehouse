@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_network_directory_user,network.directory user,model_network_directory,base.group_user,1,1,1,1
+access_network_directory_manager,network.directory manager,model_network_directory,stock.group_stock_manager,1,1,1,1

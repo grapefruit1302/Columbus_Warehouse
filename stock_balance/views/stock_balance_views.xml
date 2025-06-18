@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Форма звіту по залишках -->
+    <record id="view_stock_balance_form" model="ir.ui.view">
+        <field name="name">stock.balance.form</field>
+        <field name="model">stock.balance</field>
+        <field name="arch" type="xml">
+            <form string="Залишки товарів на складах">
+                <header>
+                    <button name="action_generate_report" string="Сформувати звіт" type="object" 
+                            class="btn-primary" invisible="state == 'generated'"/>
+                    <button name="action_print_report" string="Друкувати" type="object" 
+                            class="btn-secondary" invisible="state == 'draft'"/>
+                    <button name="action_reset_to_draft" string="Змінити параметри" type="object" 
+                            class="btn-secondary" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name" readonly="1"/>
+                        </h1>
+                    </div>
+                    
+                    <group invisible="state == 'generated'">
+                        <group string="Період">
+                            <field name="date_from" required="1"/>
+                            <field name="date_to" required="1"/>
+                            <field name="report_type" widget="radio"/>
+                        </group>
+                        
+                        <group string="Фільтри">
+                            <field name="company_ids" widget="many2many_tags" 
+                                   placeholder="Оберіть компанії..."/>
+                            <field name="warehouse_ids" widget="many2many_tags"
+                                   placeholder="Оберіть склади..."/>
+                            <field name="category_ids" widget="many2many_tags"
+                                   placeholder="Оберіть категорії..."/>
+                        </group>
+                        
+                        <group string="Додаткові параметри">
+                            <field name="include_batch_details"/>
+                            <field name="include_serial_numbers"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Результати звіту -->
+                    <group invisible="state == 'draft'">
+                        <group string="Підсумки">
+                            <field name="line_count" string="Кількість позицій"/>
+                            <field name="total_amount_no_vat"/>
+                            <field name="total_amount_with_vat"/>
+                        </group>
+                    </group>
+                    
+                    <notebook invisible="state == 'draft'">
+                        <page string="Залишки товарів" name="balance_lines">
+                            <field name="line_ids">
+                                <list editable="false" create="false" delete="false">
+                                    <field name="sequence" column_invisible="1"/>
+                                    <field name="is_batch_line" column_invisible="1"/>
+                                    <field name="is_serial_line" column_invisible="1"/>
+                                    
+                                    <field name="product_code" optional="show"/>
+                                    <field name="product_name" string="Назва товару"/>
+                                    <field name="warehouse_name" string="Склад"/>
+                                    <field name="company_name" string="Компанія" optional="hide"/>
+                                    
+                                    <!-- Партійні дані -->
+                                    <field name="batch_name" string="Партія" 
+                                           optional="show" invisible="not parent.include_batch_details"/>
+                                    <field name="date_received" string="Дата надходження"
+                                           optional="hide" invisible="not parent.include_batch_details"/>
+                                    
+                                    <!-- Серійні номери -->
+                                    <field name="serial_number" string="S/N"
+                                           optional="show" invisible="not parent.include_serial_numbers"/>
+                                    
+                                    <field name="quantity" string="Кількість" sum="quantity"/>
+                                    <field name="uom_name" string="Од."/>
+                                    <field name="price_no_vat" string="Ціна без ПДВ" optional="hide"/>
+                                    <field name="amount_no_vat" string="Сума без ПДВ" sum="amount_no_vat"/>
+                                    <field name="amount_with_vat" string="Сума з ПДВ" sum="amount_with_vat" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Список звітів -->
+    <record id="view_stock_balance_list" model="ir.ui.view">
+        <field name="name">stock.balance.list</field>
+        <field name="model">stock.balance</field>
+        <field name="arch" type="xml">
+            <list string="Звіти по залишках" create="true" delete="true">
+                <field name="display_name"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="line_count" string="Позицій"/>
+                <field name="total_amount_no_vat" sum="total_amount_no_vat"/>
+                <field name="total_amount_with_vat" sum="total_amount_with_vat" optional="hide"/>
+                <field name="state" widget="badge" 
+                       decoration-success="state == 'generated'"
+                       decoration-muted="state == 'draft'"/>
+                <field name="create_date" optional="show"/>
+                <field name="create_uid" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Пошук -->
+    <record id="view_stock_balance_search" model="ir.ui.view">
+        <field name="name">stock.balance.search</field>
+        <field name="model">stock.balance</field>
+        <field name="arch" type="xml">
+            <search string="Пошук звітів">
+                <field name="display_name"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="company_ids"/>
+                <field name="warehouse_ids"/>
+                <field name="category_ids"/>
+                
+                <filter string="Згенеровані" name="generated" domain="[('state', '=', 'generated')]"/>
+                <filter string="Параметри" name="draft" domain="[('state', '=', 'draft')]"/>
+                
+                <separator/>
+                <filter string="Сьогодні" name="today" 
+                        domain="[('date_to', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Цей місяць" name="this_month" 
+                        domain="[('date_to', '&gt;=', context_today().strftime('%Y-%m-01')),
+                                ('date_to', '&lt;=', (context_today() + relativedelta(months=1, day=1, days=-1)).strftime('%Y-%m-%d'))]"/>
+                
+                <group expand="0" string="Групування">
+                    <filter string="За статусом" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="За датою створення" name="group_create_date" context="{'group_by': 'create_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Дія -->
+    <record id="action_stock_balance" model="ir.actions.act_window">
+        <field name="name">Залишки товарів</field>
+        <field name="res_model">stock.balance</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Створіть новий звіт по залишках товарів
+            </p>
+            <p>
+                Цей модуль дозволяє формувати звіти по залишках товарів на складах з урахуванням партійного обліку та принципу FIFO.
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Search View for stock.receipt.serial.wizard.serial -->
+        <record id="stock_receipt_serial_wizard_serial_search_view" model="ir.ui.view">
+            <field name="name">stock.receipt.serial.wizard.serial.search</field>
+            <field name="model">stock.receipt.serial.wizard.serial</field>
+            <field name="arch" type="xml">
+                <search string="Пошук серійних номерів">
+                    <field name="serial_number" string="Серійний номер"/>
+                    <filter string="Непорожні серійні номери" name="non_empty" domain="[('serial_number', '!=', False)]"/>
+                    <group expand="1" string="Групувати за">
+                        <filter string="За серійним номером" name="group_by_serial" context="{'group_by': 'serial_number'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Form View for stock.receipt.serial.wizard -->
+        <record id="view_stock_receipt_serial_wizard_form" model="ir.ui.view">
+            <field name="name">stock.receipt.serial.wizard.form</field>
+            <field name="model">stock.receipt.serial.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Введення серійних номерів">
+                    <sheet>
+                        <!-- Замінено attrs на invisible -->
+                        <div class="alert alert-warning" role="alert" invisible="warning_message == False">
+                            <i class="fa fa-warning"/> <field name="warning_message"/>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="receipt_id" invisible="1"/>
+                                <field name="selected_line_id" invisible="1"/>
+                                <field name="selected_product_name" string="Обраний товар" readonly="1"/>
+                                <field name="selected_qty" string="Необхідна кількість" readonly="1"/>
+                                <field name="current_serial_count" string="Введено S/N" readonly="1"/>
+                            </group>
+                            <group>
+                                <button name="action_load_from_file" string="Завантажити з файлу" 
+                                        type="object" class="btn-secondary" icon="fa-upload"/>
+                            </group>
+                        </group>
+                        
+                        <separator string="Серійні номери"/>
+                        <field name="serial_line_ids" nolabel="1">
+                            <list editable="bottom" create="true" delete="true">
+                                <field name="serial_number" string="Серійний номер"/>
+                            </list>
+                        </field>
+                        
+                        <div class="alert alert-info" role="alert">
+                            <i class="fa fa-info-circle"/> Введіть серійні номери для обраного товару. 
+                            Для завантаження з файлу використовуйте Excel файл, де серійні номери розміщені в першій колонці (A).
+                        </div>
+                    </sheet>
+                    <footer>
+                        <button name="action_save_and_close" string="Зберегти та закрити" 
+                                type="object" class="btn-primary"/>
+                        <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Action for stock.receipt.serial.wizard -->
+        <record id="action_stock_receipt_serial_wizard" model="ir.actions.act_window">
+            <field name="name">Введення серійних номерів</field>
+            <field name="res_model">stock.receipt.serial.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="context">{'dialog_size': 'medium'}</field>
+        </record>
+
+        <!-- Form View for stock.receipt.serial.duplicate.wizard -->
+        <record id="view_stock_receipt_serial_duplicate_wizard_form" model="ir.ui.view">
+            <field name="name">stock.receipt.serial.duplicate.wizard.form</field>
+            <field name="model">stock.receipt.serial.duplicate.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Помилка затвердження">
+                    <sheet>
+                    
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fa fa-exclamation-triangle"/> 
+                            <strong>Знайдено дублікати серійних номерів:</strong>
+                            <br/>
+                            <field name="duplicates" readonly="1" nolabel="1"/>
+                        </div>
+                        
+                        <div class="alert alert-info" role="alert">
+                            <i class="fa fa-info-circle"/> 
+                            Ви можете автоматично видалити дублікати, залишивши лише унікальні серійні номери, 
+                            або закрити це вікно і відредагувати список вручну.
+                        </div>
+                        
+                        <field name="parent_wizard_id" invisible="1"/>
+                    </sheet>
+                    <footer>
+                        <button name="action_remove_duplicates" string="Очистити дублікати" 
+                                type="object" class="btn-warning" icon="fa-trash"/>
+                        <button string="Закрити" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Form View for stock.receipt.serial.import.wizard -->
+        <record id="view_stock_receipt_serial_import_wizard_form" model="ir.ui.view">
+            <field name="name">stock.receipt.serial.import.wizard.form</field>
+            <field name="model">stock.receipt.serial.import.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Імпорт серійних номерів">
+                    <group>
+                        <field name="parent_wizard_id" invisible="1"/>
+                        <field name="file_data" filename="file_name" widget="binary"/>
+                        <field name="file_name" invisible="1"/>
+                    </group>
+                    <footer>
+                        <button name="action_import" string="Імпортувати" 
+                                type="object" class="btn-primary"/>
+                        <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

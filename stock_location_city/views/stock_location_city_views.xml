@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Представлення списку -->
+    <record id="view_stock_location_city_list" model="ir.ui.view">
+        <field name="name">stock.location.city.list</field>
+        <field name="model">stock.location.city</field>
+        <field name="arch" type="xml">
+            <list string="Населені пункти" editable="bottom" create="true" multi_edit="1">
+                <field name="name" string="Назва" required="1"/>
+                <field name="region_id" string="Район" required="1" domain="[('company_id', '=', company_id)]"/>
+                <field name="district_id" string="Мікрорайон" domain="[('company_id', '=', company_id)]"/>
+                <field name="network_id" string="Мережа" required="1" domain="[('company_id', '=', company_id)]"/>
+                <field name="accounting_network_id" string="Мережа (Бухгалтерія)" domain="[('company_id', '=', company_id)]"/>
+                <field name="company_id" string="Компанія" required="1" groups="base.group_multi_company"/>
+                <field name="active" string="Активний" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Форма -->
+    <record id="view_stock_location_city_form" model="ir.ui.view">
+        <field name="name">stock.location.city.form</field>
+        <field name="model">stock.location.city</field>
+        <field name="arch" type="xml">
+            <form string="Населений пункт">
+                <sheet>
+                    <group>
+                        <field name="name" string="Назва" required="1"/>
+                        <field name="region_id" string="Район" required="1" domain="[('company_id', '=', company_id)]"/>
+                        <field name="district_id" string="Мікрорайон" domain="[('company_id', '=', company_id)]"/>
+                        <field name="network_id" string="Мережа" required="1" domain="[('company_id', '=', company_id)]"/>
+                        <field name="accounting_network_id" string="Мережа (Бухгалтерія)" domain="[('company_id', '=', company_id)]"/>
+                        <field name="company_id" string="Компанія" required="1" groups="base.group_multi_company"/>
+                        <field name="active" string="Активний" widget="boolean_toggle"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Дія для довідника -->
+    <record id="action_stock_location_city" model="ir.actions.act_window">
+        <field name="name">Населені пункти/вулиці</field>
+        <field name="res_model">stock.location.city</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_stock_location_city_list"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="domain">[('company_id', 'in', context.get('allowed_company_ids', []))]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Створіть перший населений пункт
+            </p>
+            <p>
+                Тут ви можете налаштувати населені пункти з прив'язкою до мереж, районів, мікрорайонів та компаній.
+            </p>
+        </field>
+    </record>
+
+</odoo>

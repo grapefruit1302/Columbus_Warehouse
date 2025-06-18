@@ -1,0 +1,25 @@
+@startuml General Workflow
+
+start
+note: Get child parent modules
+while (Parent Modules != False)
+    :Get Module;
+    if (Module) then (Has Dependencies)
+        while (Each Dependency)
+            :Save Module Data;
+            note
+                short_desc Name
+                name Technical Name
+                author Author
+                state Status
+                installed_version Latest Version
+                application Is an Application
+                licence Module License
+            end note
+            :Save Relation information;
+        end while
+    endif
+
+end while
+stop
+@enduml

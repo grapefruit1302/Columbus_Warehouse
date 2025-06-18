@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_extended" model="ir.ui.view">
+        <field name="name">res.partner.form.extended</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="is_supplier"/>
+                <field name="contact_type"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_res_partner_filter_extended" model="ir.ui.view">
+        <field name="name">res.partner.search.extended</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Постачальники" name="filter_suppliers" domain="[('is_supplier', '=', True)]"/>
+                <separator/>
+                <group expand="0" string="Групувати за">
+                    <filter string="Тип контакту" name="group_by_contact_type" context="{'group_by': 'contact_type'}"/>
+                </group>
+                <searchpanel>
+                    <field name="contact_type" string="Тип контакту" enable_counters="1" expand="1"/>
+                </searchpanel>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_suppliers" model="ir.actions.act_window">
+        <field name="name">Постачальники</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('is_supplier', '=', True)]</field>
+        <field name="context">{'default_is_supplier': True, 'default_contact_type': 'supplier'}</field>
+    </record>
+</odoo>

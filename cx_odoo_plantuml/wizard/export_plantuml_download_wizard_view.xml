@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+
+    Copyright (C) 2020 Cetmix OÜ
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU LESSER GENERAL PUBLIC LICENSE as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU LESSER GENERAL PUBLIC LICENSE for more details.
+
+    You should have received a copy of the GNU LESSER GENERAL PUBLIC LICENSE
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<odoo>
+    <!-- ### Download Form ### -->
+    <record model="ir.ui.view" id="cetmix_uml_export_download_form">
+        <field name="name">cetmix.uml.export.download.form</field>
+        <field name="model">cx.plantuml.export.wiz.download</field>
+        <field name="arch" type="xml">
+            <form string="File download">
+                <field name="installed" invisible="True" />
+                <div class="o_row">
+                    <field name="deps_fname" invisible="True" />
+                    <label for="deps" string="Dependency structure " />
+                    <field name="deps" widget="binary" filename="deps_fname" />
+                </div>
+                <div class="o_row" invisible="installed == False">
+                    <field name="models_fname" invisible="True" />
+                    <label for="models" string="Module models " />
+                    <field name="models" widget="binary" filename="models_fname" />
+                </div>
+                <footer>
+                    <button string="Close" special="cancel" class="btn-primary" />
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

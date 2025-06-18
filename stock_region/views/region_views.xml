@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_region_tree" model="ir.ui.view">
+        <field name="name">stock.region.list</field>
+        <field name="model">stock.region</field>
+        <field name="arch" type="xml">
+            <list string="Райони" editable="bottom" create="true">
+                <field name="code" string="Код" required="1" options="{'maxlength': 2}"/>
+                <field name="name" string="Найменування" required="1"/>
+                <!-- Прибрано статичний domain, тепер буде встановлюватися динамічно -->
+                <field name="company_id" string="Компанія" groups="base.group_multi_company" optional="show"/>
+                <field name="active" string="Активний" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_stock_region_form" model="ir.ui.view">
+        <field name="name">stock.region.form</field>
+        <field name="model">stock.region</field>
+        <field name="arch" type="xml">
+            <form string="Район">
+                <sheet>
+                    <widget name="web_ribbon" title="Архівовано" bg_color="bg-danger" 
+                            invisible="active"/>
+                    <group>
+                        <group>
+                            <field name="code" string="Код" required="1" options="{'maxlength': 2}"/>
+                            <field name="name" string="Найменування" required="1"/>
+                        </group>
+                        <group>
+                            <field name="active" string="Активний"/>
+                            <!-- Прибрано статичний domain, тепер буде встановлюватися динамічно -->
+                            <field name="company_id" string="Компанія" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_stock_region_search" model="ir.ui.view">
+        <field name="name">stock.region.search</field>
+        <field name="model">stock.region</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code" string="Код"/>
+                <field name="name" string="Найменування"/>
+                <field name="company_id" string="Компанія" groups="base.group_multi_company"/>
+                <separator/>
+                <filter string="Активні" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Архівовані" name="archived" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Групувати за">
+                    <filter string="Компанія" name="group_by_company" 
+                            domain="[]" context="{'group_by': 'company_id'}"/>
+                    <filter string="Статус" name="group_by_active" 
+                            domain="[]" context="{'group_by': 'active'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_stock_region" model="ir.actions.act_window">
+        <field name="name">Райони</field>
+        <field name="res_model">stock.region</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{
+            'default_create_inline': True, 
+            'search_default_active': 1,
+            'force_company_filter': True
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_create">
+                Натисніть "Додати рядок" для створення нового району.
+            </p>
+        </field>
+    </record>
+</odoo>

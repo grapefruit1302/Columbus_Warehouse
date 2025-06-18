@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <menuitem id="menu_custom_stock_directories_top"
+            name="Довідники"
+            parent="stock.menu_stock_root" 
+            sequence="20"  /> 
+            
+
+            <menuitem id="menu_reference_0"
+                        name="Загальні"
+                        parent="menu_custom_stock_directories_top"
+                        sequence="1"/>
+            
+            <menuitem id="menu_reference_1"
+                name="Довідник районів"
+                parent="menu_reference_0"
+                action="stock_region.action_stock_region"
+                sequence="10"/>
+
+            <menuitem id="menu_reference_2"
+                name="Довідник мікрорайонів"
+                parent="menu_reference_0"
+                action="district_directory.action_district_directory"
+                sequence="20"/>
+            
+            <menuitem id="menu_reference_3"
+                name="Довідник НП/Вулиць"
+                parent="menu_reference_0"
+                action="stock_location_city.action_stock_location_city"
+                sequence="30"/>
+
+            <menuitem id="menu_reference_4"
+                name="Довідник Мереж (Ромсат)"
+                parent="menu_reference_0"
+                action="network_directory.action_network"
+                sequence="40"/>
+
+            <menuitem id="menu_reference_5"
+                name="Довідник мереж (Бухгалтерія)"
+                parent="menu_reference_0"
+                action="accounting_network_directory.action_accounting_network_directory"
+                sequence="50"/>
+
+
+        <menuitem id="menu_reference_01"
+                name="Фінансові"
+                parent="menu_custom_stock_directories_top"
+                sequence="1"/>
+            
+            <menuitem id="menu_reference_6"
+                name="Довідник валют"
+                parent="menu_reference_01"
+                action="currency_directory.currency_directory_action"
+                sequence="10"/>
+            
+            <menuitem id="menu_reference_7"
+                name="Історія курсів"
+                parent="menu_reference_01"
+                action="currency_directory.currency_rate_history_action"
+                sequence="10"/>
+
+
+
+
+  </data>
+</odoo>

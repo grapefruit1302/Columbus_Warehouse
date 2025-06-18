@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_currency_directory_user,currency.directory.user,model_currency_directory,base.group_user,1,0,0,0
+access_currency_directory_manager,currency.directory.manager,model_currency_directory,stock.group_stock_manager,1,1,1,1
+access_currency_rate_history_user,currency.directory.rate.history.user,model_currency_directory_rate_history,base.group_user,1,0,0,0
+access_currency_rate_history_manager,currency.directory.rate.history.manager,model_currency_directory_rate_history,stock.group_stock_manager,1,1,1,1

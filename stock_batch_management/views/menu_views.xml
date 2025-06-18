@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Menu -->
+    <menuitem id="menu_stock_batch_management" 
+              name="Партійний облік" 
+              parent="stock.menu_stock_root" 
+              sequence="50"/>
+    
+    <!-- Batches Menu -->
+    <menuitem id="menu_stock_batch" 
+              name="Партії товарів" 
+              parent="menu_stock_batch_management" 
+              action="action_stock_batch" 
+              sequence="10"/>
+    
+    <!-- Batch Movements Menu -->
+    <menuitem id="menu_stock_batch_movement" 
+              name="Рухи партій" 
+              parent="menu_stock_batch_management" 
+              action="action_stock_batch_movement" 
+              sequence="20"/>
+
+    <!-- Analysis Submenu -->
+    <menuitem id="menu_stock_batch_analysis_submenu" 
+              name="Аналіз" 
+              parent="menu_stock_batch_management" 
+              sequence="30"/>
+
+    <!-- Analysis Menu Items -->
+    <menuitem id="menu_stock_batch_analysis" 
+              name="Аналіз партій" 
+              parent="menu_stock_batch_analysis_submenu" 
+              action="action_stock_batch_analysis" 
+              sequence="10"/>
+
+    <menuitem id="menu_stock_batch_movement_analysis" 
+              name="Аналіз рухів" 
+              parent="menu_stock_batch_analysis_submenu" 
+              action="action_stock_batch_movement_analysis" 
+              sequence="20"/>
+
+    <!-- Reports Submenu -->
+    <menuitem id="menu_stock_batch_reports_submenu" 
+              name="Звіти" 
+              parent="menu_stock_batch_management" 
+              sequence="40"/>
+
+    <!-- Report Wizard Menu -->
+    <menuitem id="menu_stock_batch_report_wizard" 
+              name="Створити звіт" 
+              parent="menu_stock_batch_reports_submenu" 
+              action="action_stock_batch_report_wizard" 
+              sequence="10"/>
+</odoo>

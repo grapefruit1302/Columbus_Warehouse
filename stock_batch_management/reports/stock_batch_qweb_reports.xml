@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Report Actions -->
+    <record id="action_report_stock_batch_movement" model="ir.actions.report">
+        <field name="name">Звіт руху товарів</field>
+        <field name="model">stock.batch.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">stock_batch_management.movement_report_template</field>
+        <field name="report_file">stock_batch_management.movement_report_template</field>
+        <field name="binding_model_id" ref="model_stock_batch_report_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_stock_batch_balance" model="ir.actions.report">
+        <field name="name">Звіт залишків товарів</field>
+        <field name="model">stock.batch.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">stock_batch_management.balance_report_template</field>
+        <field name="report_file">stock_batch_management.balance_report_template</field>
+        <field name="binding_model_id" ref="model_stock_batch_report_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Movement Report Template -->
+    <template id="movement_report_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <!-- Report Header -->
+                        <div class="row mb32">
+                            <div class="col-12 text-center">
+                                <h2>Звіт руху товарів</h2>
+                                <h4 t-esc="o.get_report_title()"/>
+                            </div>
+                        </div>
+
+                        <!-- Company and Period Info -->
+                        <div class="row mb16">
+                            <div class="col-6">
+                                <strong>Компанія:</strong> <span t-esc="o.get_company_info()['name']"/><br/>
+                                <strong>Період:</strong> <span t-esc="o.get_company_info()['period']"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Склади:</strong> <span t-esc="o.get_company_info()['warehouses']"/><br/>
+                                <strong>Категорії:</strong> <span t-esc="o.get_company_info()['categories']"/>
+                            </div>
+                        </div>
+
+                        <!-- Report Data -->
+                        <t t-set="report_data" t-value="o.get_movement_report_data()"/>
+                        <t t-if="report_data">
+                            <table class="table table-sm table-bordered">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th t-if="o.detail_level == 'warehouse'">Склад</th>
+                                        <th t-if="o.detail_level in ['nomenclature', 'batch']">Номенклатура</th>
+                                        <th t-if="o.detail_level == 'batch'">Партія</th>
+                                        <th class="text-right">Надійшло</th>
+                                        <th class="text-right">Списано</th>
+                                        <th class="text-right">Загальний оборот</th>
+                                        <th class="text-right">К-сть рухів</th>
+                                        <th>Од. виміру</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-set="total_in" t-value="0"/>
+                                    <t t-set="total_out" t-value="0"/>
+                                    <t t-set="total_movements" t-value="0"/>
+                                    
+                                    <t t-foreach="report_data" t-as="line">
+                                        <tr>
+                                            <td t-if="o.detail_level == 'warehouse'" t-esc="line.get('name', '')"/>
+                                            <td t-if="o.detail_level in ['nomenclature', 'batch']" t-esc="line.get('name', '')"/>
+                                            <td t-if="o.detail_level == 'batch'" t-esc="line.get('key', '').split('_')[1] if '_' in line.get('key', '') else ''"/>
+                                            <td class="text-right" t-esc="'{:,.2f}'.format(line.get('qty_in', 0))"/>
+                                            <td class="text-right" t-esc="'{:,.2f}'.format(line.get('qty_out', 0))"/>
+                                            <td class="text-right" t-esc="'{:,.2f}'.format(line.get('qty_total', 0))"/>
+                                            <td class="text-right" t-esc="line.get('movements_count', 0)"/>
+                                            <td t-esc="line.get('uom_name', '')"/>
+                                        </tr>
+                                        
+                                        <t t-set="total_in" t-value="total_in + line.get('qty_in', 0)"/>
+                                        <t t-set="total_out" t-value="total_out + line.get('qty_out', 0)"/>
+                                        <t t-set="total_movements" t-value="total_movements + line.get('movements_count', 0)"/>
+                                    </t>
+                                </tbody>
+                                <tfoot class="thead-light">
+                                    <tr>
+                                        <td t-if="o.detail_level == 'warehouse'"><strong>Всього:</strong></td>
+                                        <td t-if="o.detail_level in ['nomenclature', 'batch']"><strong>Всього:</strong></td>
+                                        <td t-if="o.detail_level == 'batch'"></td>
+                                        <td class="text-right"><strong t-esc="'{:,.2f}'.format(total_in)"/></td>
+                                        <td class="text-right"><strong t-esc="'{:,.2f}'.format(total_out)"/></td>
+                                        <td class="text-right"><strong t-esc="'{:,.2f}'.format(total_in + total_out)"/></td>
+                                        <td class="text-right"><strong t-esc="total_movements"/></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </t>
+                        <t t-else="">
+                            <div class="alert alert-info">
+                                <strong>Інформація:</strong> За вказаними критеріями дані не знайдено.
+                            </div>
+                        </t>
+
+                        <!-- Report Footer -->
+                        <div class="row mt32">
+                            <div class="col-12 text-right">
+                                <small>
+                                    Звіт створено: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d.%m.%Y %H:%M')"/>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Balance Report Template -->
+    <template id="balance_report_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <!-- Report Header -->
+                        <div class="row mb32">
+                            <div class="col-12 text-center">
+                                <h2>Звіт залишків товарів</h2>
+                                <h4 t-esc="o.get_report_title()"/>
+                            </div>
+                        </div>
+
+                        <!-- Company and Period Info -->
+                        <div class="row mb16">
+                            <div class="col-6">
+                                <strong>Компанія:</strong> <span t-esc="o.get_company_info()['name']"/><br/>
+                                <strong>Дата звіту:</strong> <span t-esc="o.date_to.strftime('%d.%m.%Y')"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Склади:</strong> <span t-esc="o.get_company_info()['warehouses']"/><br/>
+                                <strong>Категорії:</strong> <span t-esc="o.get_company_info()['categories']"/>
+                            </div>
+                        </div>
+
+                        <!-- Report Data -->
+                        <t t-set="report_data" t-value="o.get_balance_report_data()"/>
+                        <t t-if="report_data">
+                            <table class="table table-sm table-bordered">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th t-if="o.detail_level == 'warehouse'">Склад</th>
+                                        <th t-if="o.detail_level in ['nomenclature', 'batch']">Номенклатура</th>
+                                        <th t-if="o._is_parent_company_selected()">Компанія</th>
+                                        <th class="text-right">Загальна к-сть</th>
+                                        <th class="text-right">Доступна к-сть</th>
+                                        <th>Од. виміру</th>
+                                        <th class="text-center">Статус</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-set="total_qty" t-value="0"/>
+                                    <t t-set="total_available" t-value="0"/>
+                                    
+                                    <t t-foreach="report_data" t-as="line">
+                                        <tr>
+                                            <td t-if="o.detail_level == 'warehouse'" t-esc="line.get('name', '')"/>
+                                            <td t-if="o.detail_level in ['nomenclature', 'batch']" t-esc="line.get('name', '')"/>
+                                            <td t-if="o._is_parent_company_selected()" t-esc="line.get('company_name', '')"/>
+                                            <td class="text-right" t-esc="'{:,.2f}'.format(line.get('total_qty', 0))"/>
+                                            <td class="text-right" t-esc="'{:,.2f}'.format(line.get('available_qty', 0))"/>
+                                            <td t-esc="line.get('uom_name', '')"/>
+                                            <td class="text-center">
+                                                <span t-if="line.get('state') == 'active'" style="color: green;">Активна</span>
+                                                <span t-elif="line.get('state') == 'depleted'" style="color: red;">Вичерпана</span>
+                                                <span t-elif="line.get('state') == 'expired'" style="color: orange;">Прострочена</span>
+                                                <span t-elif="line.get('state') == 'blocked'" style="color: gray;">Заблокована</span>
+                                                <span t-else="" style="color: blue;">Змішаний</span>
+                                            </td>
+                                        </tr>
+                                        
+                                        <t t-set="total_qty" t-value="total_qty + line.get('total_qty', 0)"/>
+                                        <t t-set="total_available" t-value="total_available + line.get('available_qty', 0)"/>
+                                    </t>
+                                </tbody>
+                                <tfoot class="thead-light">
+                                    <tr>
+                                        <td t-if="o.detail_level == 'warehouse'"><strong>Всього:</strong></td>
+                                        <td t-if="o.detail_level in ['nomenclature', 'batch']"><strong>Всього:</strong></td>
+                                        <td t-if="o._is_parent_company_selected()"></td>
+                                        <td class="text-right"><strong t-esc="'{:,.2f}'.format(total_qty)"/></td>
+                                        <td class="text-right"><strong t-esc="'{:,.2f}'.format(total_available)"/></td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </t>
+                        <t t-else="">
+                            <div class="alert alert-info">
+                                <strong>Інформація:</strong> За вказаними критеріями дані не знайдено.
+                            </div>
+                        </t>
+
+                        <!-- Report Footer -->
+                        <div class="row mt32">
+                            <div class="col-12 text-right">
+                                <small>
+                                    Звіт створено: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d.%m.%Y %H:%M')"/>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

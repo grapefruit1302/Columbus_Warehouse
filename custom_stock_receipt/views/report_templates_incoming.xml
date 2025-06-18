@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="report_stock_receipt_incoming_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="doc">
+                    <t t-call="web.basic_layout">
+                        <div class="page">
+                            <style>
+                                @page {
+                                    size: A4 portrait;
+                                    margin: 8mm 5mm;
+                                }
+                                body {
+                                    margin: 0;
+                                    padding: 0;
+                                }
+                                .page {
+                                    font-family: 'Times New Roman', serif;
+                                    font-size: 11px;
+                                    line-height: 1.1;
+                                    margin: 0;
+                                    padding: 0;
+                                    width: 210mm;
+                                    min-height: 297mm;
+                                    box-sizing: border-box;
+                                    background: white;
+                                }
+                                .header-section {
+                                    margin-bottom: 8px;
+                                    border: 1px solid #333;
+                                    border-radius: 2px;
+                                }
+                                .header-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                    margin: 0;
+                                }
+                                .header-table td {
+                                    padding: 4px 8px;
+                                    vertical-align: middle;
+                                    font-size: 11px;
+                                    border-bottom: 1px solid #ddd;
+                                }
+                                .header-table .label {
+                                    font-weight: bold;
+                                    background-color: #f5f5f5;
+                                    color: #333;
+                                    width: 25%;
+                                    border-right: 1px solid #ddd;
+                                }
+                                .header-table tr:last-child td {
+                                    border-bottom: none;
+                                }
+                                .title-section {
+                                    text-align: center;
+                                    margin: 8px 0;
+                                    padding: 8px;
+                                    background-color: #e9ecef;
+                                    border: 1px solid #495057;
+                                    border-radius: 3px;
+                                }
+                                .title-main {
+                                    font-size: 14px;
+                                    font-weight: bold;
+                                    margin-bottom: 3px;
+                                    color: #212529;
+                                }
+                                .title-date {
+                                    font-size: 12px;
+                                    color: #495057;
+                                }
+                                .items-section {
+                                    margin: 8px 0;
+                                    border: 1px solid #333;
+                                    border-radius: 2px;
+                                }
+                                .items-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                    margin: 0;
+                                }
+                                .items-table th {
+                                    background-color: #495057;
+                                    color: white;
+                                    padding: 5px 3px;
+                                    text-align: center;
+                                    font-weight: bold;
+                                    font-size: 10px;
+                                    border: 1px solid #333;
+                                }
+                                .items-table td {
+                                    padding: 4px 3px;
+                                    text-align: center;
+                                    vertical-align: middle;
+                                    font-size: 10px;
+                                    border: 1px solid #ddd;
+                                    background-color: #fff;
+                                }
+                                .items-table tbody tr:nth-child(even) {
+                                    background-color: #f8f9fa;
+                                }
+                                .items-table .text-left {
+                                    text-align: left !important;
+                                }
+                                .items-table .text-right {
+                                    text-align: right !important;
+                                }
+                                .total-section {
+                                    margin: 8px 0;
+                                    padding: 8px;
+                                    background-color: #f8f9fa;
+                                    border: 1px solid #dee2e6;
+                                    border-radius: 3px;
+                                }
+                                .total-row {
+                                    display: flex;
+                                    justify-content: space-between;
+                                    margin: 2px 0;
+                                    padding: 2px 0;
+                                    border-bottom: 1px solid #dee2e6;
+                                    font-size: 11px;
+                                }
+                                .total-row:last-child {
+                                    border-bottom: 2px solid #007bff;
+                                    font-weight: bold;
+                                    font-size: 12px;
+                                    color: #007bff;
+                                }
+                                .total-label {
+                                    font-weight: bold;
+                                    color: #495057;
+                                }
+                                .amount-words {
+                                    margin: 8px 0;
+                                    padding: 6px;
+                                    background-color: #fff3cd;
+                                    border: 1px solid #ffc107;
+                                    border-radius: 3px;
+                                    font-size: 10px;
+                                    font-weight: bold;
+                                    color: #856404;
+                                }
+                                .signature-section {
+                                    margin-top: 12px;
+                                    display: flex;
+                                    justify-content: space-between;
+                                    gap: 10px;
+                                }
+                                .signature-block {
+                                    flex: 1;
+                                    padding: 4px;
+                                    text-align: center;
+                                }
+                                .signature-title {
+                                    font-weight: bold;
+                                    margin-bottom: 5px;
+                                    color: #495057;
+                                    font-size: 10px;
+                                }
+                                .signature-line {
+                                    border-bottom: 1px solid #333;
+                                    margin: 8px 0 3px 0;
+                                    height: 12px;
+                                }
+                                .signature-text {
+                                    font-size: 8px;
+                                    color: #6c757d;
+                                    font-style: italic;
+                                }
+                                @media print {
+                                    .page {
+                                        width: 100%;
+                                        max-width: none;
+                                        margin: 0;
+                                        padding: 0;
+                                        box-shadow: none;
+                                    }
+                                    @page {
+                                        margin: 5mm;
+                                    }
+                                }
+                            </style>
+
+                            <!-- Заголовочна секція з інформацією -->
+                            <div class="header-section">
+                                <table class="header-table">
+                                    <tr>
+                                        <td class="label">Постачальник:</td>
+                                        <td><span t-field="doc.partner_id.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label">Одержувач:</td>
+                                        <td><span t-field="doc.company_id.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label">Дата документа:</td>
+                                        <td><span t-field="doc.date" t-options="{'widget': 'date', 'format': 'dd.MM.yyyy'}"/></td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <!-- Заголовок документа -->
+                            <div class="title-section">
+                                <div class="title-main">
+                                    Прибуткова накладна № <span t-field="doc.number"/>
+                                </div>
+                                <div class="title-date">
+                                    від <span t-field="doc.date" t-options="{'widget': 'date', 'format': 'd MMMM yyyy р.'}"/>
+                                </div>
+                            </div>
+
+                            <!-- Таблиця товарів -->
+                            <div class="items-section">
+                                <table class="items-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 5%;">№</th>
+                                            <th style="width: 45%;">Найменування товару</th>
+                                            <th style="width: 8%;">Од. вим.</th>
+                                            <th style="width: 10%;">Кількість</th>
+                                            <th style="width: 12%;">Ціна без ПДВ</th>
+                                            <th style="width: 12%;">Сума без ПДВ</th>
+                                            <th style="width: 8%;" t-if="not doc.no_vat">ПДВ %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="doc.line_ids" t-as="line">
+                                            <td><span t-esc="line_index + 1"/></td>
+                                            <td class="text-left">
+                                                <strong><span t-field="line.nomenclature_id.name"/></strong>
+                                            </td>
+                                            <td><span t-field="line.selected_uom_id.name"/></td>
+                                            <td class="text-right"><span t-field="line.qty" t-options="{'widget': 'float', 'precision': 3}"/></td>
+                                            <td class="text-right"><span t-field="line.price_unit_no_vat" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                            <td class="text-right"><span t-field="line.amount_no_vat" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                            <td t-if="not doc.no_vat" class="text-right">
+                                                <span t-esc="'%.0f' % line.vat_rate"/>%
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Підсумки -->
+                            <div class="total-section">
+                                <div class="total-row">
+                                    <span class="total-label">Разом без ПДВ:</span>
+                                    <span>
+                                        <t t-set="total_no_vat" t-value="sum(doc.line_ids.mapped('amount_no_vat'))"/>
+                                        <span t-esc="'%.2f' % total_no_vat"/>
+                                    </span>
+                                </div>
+                                <div class="total-row" t-if="not doc.no_vat">
+                                    <span class="total-label">ПДВ:</span>
+                                    <span>
+                                        <t t-set="total_vat" t-value="sum(doc.line_ids.mapped('vat_amount'))"/>
+                                        <span t-esc="'%.2f' % total_vat"/>
+                                    </span>
+                                </div>
+                                <div class="total-row">
+                                    <span class="total-label">Всього з ПДВ:</span>
+                                    <span>
+                                        <t t-set="total_with_vat" t-value="total_no_vat + (total_vat if not doc.no_vat else 0)"/>
+                                        <span t-esc="'%.2f' % total_with_vat"/>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Сума прописом -->
+                            <div class="amount-words">
+                                Всього на суму: 
+                                <span t-esc="doc._get_amount_in_words(total_with_vat)"/>
+                                <br/>
+                                ПДВ: 
+                                <t t-if="not doc.no_vat">
+                                    <span t-esc="doc._get_amount_in_words(total_vat)"/>
+                                </t>
+                                <t t-else="">нуль гривень</t>
+                            </div>
+
+                            <!-- Підписи -->
+                            <div class="signature-section">
+                                <div class="signature-block">
+                                    <div class="signature-title">Відвантажив(ла)</div>
+                                    <div class="signature-line"></div>
+                                    <div class="signature-text">(підпис)</div>
+                                </div>
+                                <div class="signature-block">
+                                    <div class="signature-title">Отримав(ла)</div>
+                                    <div class="signature-line"></div>
+                                    <div class="signature-text">(підпис)</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

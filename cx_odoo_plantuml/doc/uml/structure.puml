@@ -1,0 +1,116 @@
+@startuml
+'skinparam dpi 300
+'Classes
+!define Model(name,desc) class name as "desc" << (M,#FFAAAA) >>
+!define TransientModel(name,desc) class name as "desc" << (T,magenta) >>
+!define AbstractModel(name,desc) class name as "desc" << (T,green) >>
+
+' Model related values (e.g ._name, _inherit, _order etc)
+' Use with no(!) underscore (e.g. name, order, rec_name etc)
+!define m(x) -<b>_<color:red>x</color></b>
+
+'Field definitions
+!define c(x) +<b><i>x</i> Char</b>
+!define char(x) c(x)
+!define m2o(x) +<b><color:magenta><i>x</i> Many2one</color></b>
+!define m2m(x) +<b><color:magenta><i>x</i> Many2many</color> x</b>
+!define o2m(x) +<b><color:darkorange><i>x</i> One2many</color></b>
+!define reference(x) +<b><color:magenta><i>x</i> Reference</color> x</b>
+!define t(x) +<b><i>x</i> Text</b>
+!define text(x) t(x)
+!define h(x) +<b><i>x</i> Html</b>
+!define html(x) h(x)
+!define i(x) +<b><color:blue><i>x</i> Integer</color></b>
+!define int(x) i(x)
+!define integer(x) i(x)
+!define f(x) +<b><color:blue><i>x </i>Float</color></b>
+!define float(x) f(x)
+!define s(x) +<b><color:green><i>x</i> Selection</color></b>
+!define selection(x)
+!define b(x) +<b><color:darkblue><i>x</i> Boolean</color></b>
+!define bool(x) b(x)
+!define boolean(x) b(x)
+!define d(x) +<b><color:darkgreen><i>x</i> Date</color></b>
+!define date(x) d(x)
+!define dt(x) +<b><color:darkgreen><i>x</i> Datetime</color></b>
+!define datetime(x) dt(x)
+!define bin(x) +<b><color:purple><i>x</i> Binary</color></b>
+!define binary(x) bin(x)
+
+'Attributes and params
+!define help(x) x
+'comodel
+!define cm(x) <color:magenta>->x</color>
+!define comodel(x) cm(x)
+'inverse
+!define inv(x) <color:darkorange><-x</color>
+!define inverse(x) inv(x)
+'domain
+!define dom(x) <color:red>x</color>
+!define domain(x) dom(x)
+!define is(x) <color:red>x</color>
+!define true(x) is(x)
+!define not(x) <color:red><s>x</s></color>
+!define false(x) not(x)
+!define no(x) not(x)
+'selection
+!define sel(x) <color:green>x</color>
+!define variants(x) sel(x)
+'default
+!define def(x) <color:red>default=x</color>
+!define default(x) def(x)
+'related
+!define rel(x) <color:red><i>->x</i></color>
+!define related(x) rel(x)
+'compute
+!define com(x) <color:red>x()</color>
+!define comp(x) com(x)
+!define compute(x) com(x)
+
+hide methods
+hide stereotypes
+' entities
+' new
+Model(Module, "Module") {
+    m(inherit) ir.module.module
+}
+TransientModel(PlantUMLExport, "Export PlantUML") {
+    m(name) cx.plantuml.export.wiz
+    ==Fields==
+    m2o(module_id) Module
+    is(required)
+    ..
+    bool(installed) Installed
+    compute(_compute_installed)
+    ..
+    bin(deps) Module Dependencies
+    not(attachment)
+    ..
+    c(deps_fname) Dependencies Filename
+    ..
+    h(deps_preview) Dependencies Preview
+    ..
+    bin(models) Module Models
+    not(Attachment)
+    ..
+    c(models_fname) Models Filename
+    ..
+    h(models_preview) Models Preview
+    ..
+    b(show_fields) Show Model Fields
+    ..
+    b(show_inherited) Show Inherited Fields
+}
+TransientModel(ResConfigSettings, "Configuration Settings") {
+    m(inherit) res.config.settings
+    ==
+    char(cetmix_plantuml_server_url) PlantUML Server URL
+    ..
+    int(max_selection) Max Selection Options
+    If number of options for Selection field exceeds this amount
+    in will be shortened to "x options"
+}
+' relationships
+'Partner --> "custom_record_ids" SomeCustomModel : "partner_id"
+'some_custom_model --> "custom_record_ids" res_partner: "Related Partner"
+@enduml

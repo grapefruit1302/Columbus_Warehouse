@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <record id="axiom_is_customer_is_vendor.form_view_account_move_inherit" model="ir.ui.view">
+        <field name="name">axiom_is_customer_is_vendor account_move_form_view_inherit</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="domain">(context.get('default_move_type', 'entry') in ('out_invoice', 'out_refund',
+                    'out_receipt') and [('customer_rank','>', 0)]) or (context.get('default_move_type', 'entry') in
+                    ('in_invoice', 'in_refund', 'in_receipt') and [('supplier_rank','>', 0)]) or []
+                </attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

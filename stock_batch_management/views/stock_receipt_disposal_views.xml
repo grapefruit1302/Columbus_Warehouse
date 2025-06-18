@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend Stock Receipt Disposal Form View -->
+    <record id="stock_receipt_disposal_form_view_inherit" model="ir.ui.view">
+        <field name="name">stock.receipt.disposal.form.inherit.batch</field>
+        <field name="model">stock.receipt.disposal</field>
+        <field name="inherit_id" ref="custom_stock_receipt.view_stock_receipt_disposal_form"/>
+        <field name="arch" type="xml">
+            <!-- Додаємо кнопку після заголовка -->
+            <div class="oe_title" position="after">
+                <div class="oe_button_box" name="batch_button_box">
+                    <button name="action_view_batches" type="object" class="oe_stat_button" icon="fa-cubes"
+                            invisible="batch_count == 0">
+                        <field name="batch_count" widget="statinfo" string="Партії"/>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Додаємо вкладку в notebook -->
+            <notebook position="inside">
+                <page string="Створені партії" invisible="state == 'draft'">
+                    <field name="batch_ids" readonly="1">
+                        <list string="Партії" create="false">
+                            <field name="batch_number"/>
+                            <field name="nomenclature_id"/>
+                            <field name="initial_qty"/>
+                            <field name="current_qty"/>
+                            <field name="uom_id"/>
+                            <field name="state" widget="badge"/>
+                        </list>
+                    </field>
+                </page>
+            </notebook>
+        </field>
+    </record>
+</odoo>

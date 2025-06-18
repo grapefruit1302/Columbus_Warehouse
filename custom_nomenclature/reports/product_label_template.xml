@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="product_label_template">
+        <t t-foreach="range(doc.copy_count if hasattr(doc, 'copy_count') else 1)" t-as="i">
+            <div t-att-style="'width: ' + (doc.label_size.split('x')[0] if hasattr(doc, 'label_size') else '58') + 'mm; height: ' + (doc.label_size.split('x')[1] if hasattr(doc, 'label_size') else '40') + 'mm; border: 1px solid black; text-align: center; margin: 5px; display: inline-block;'">
+                <h3 t-esc="doc.product_name or doc.name"/>
+                <img t-att-src="barcode_url or '/report/barcode/?type=EAN13&amp;value=' + (doc.barcode or '') + '&amp;width=600&amp;height=100'" style="max-width: 100%; height: auto;"/>
+                <p t-esc="doc.barcode or ''"/>
+            </div>
+        </t>
+    </template>
+</odoo>

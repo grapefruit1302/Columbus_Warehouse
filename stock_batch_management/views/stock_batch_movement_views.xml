@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stock Batch Movement Form View -->
+    <record id="stock_batch_movement_form_view" model="ir.ui.view">
+        <field name="name">stock.batch.movement.form</field>
+        <field name="model">stock.batch.movement</field>
+        <field name="arch" type="xml">
+            <form string="Рух партії">
+                <sheet>
+                    <group>
+                        <group name="main_info">
+                            <field name="batch_id"/>
+                            <field name="movement_type"/>
+                            <field name="operation_type"/>
+                            <field name="document_reference"/>
+                        </group>
+                        <group name="quantities">
+                            <field name="qty"/>
+                            <field name="uom_id"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="locations">
+                            <field name="location_from_id"/>
+                            <field name="location_to_id"/>
+                        </group>
+                        <group name="meta">
+                            <field name="date"/>
+                            <field name="user_id"/>
+                            <field name="company_id"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <field name="notes" widget="text"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Stock Batch Movement List View -->
+    <record id="stock_batch_movement_list_view" model="ir.ui.view">
+        <field name="name">stock.batch.movement.list</field>
+        <field name="model">stock.batch.movement</field>
+        <field name="arch" type="xml">
+            <list string="Рухи партій" default_order="date desc" create="false">
+                <field name="date"/>
+                <field name="batch_id"/>
+                <field name="movement_type" widget="badge" 
+                       decoration-success="movement_type == 'in'"
+                       decoration-danger="movement_type == 'out'"
+                       decoration-info="movement_type == 'transfer'"
+                       decoration-warning="movement_type == 'adjustment'"/>
+                <field name="operation_type"/>
+                <field name="qty"/>
+                <field name="uom_id"/>
+                <field name="location_from_id"/>
+                <field name="location_to_id"/>
+                <field name="document_reference"/>
+                <field name="user_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Stock Batch Movement Search View -->
+    <record id="stock_batch_movement_search_view" model="ir.ui.view">
+        <field name="name">stock.batch.movement.search</field>
+        <field name="model">stock.batch.movement</field>
+        <field name="arch" type="xml">
+            <search string="Пошук рухів партій">
+                <field name="batch_id"/>
+                <field name="document_reference"/>
+                <field name="location_from_id"/>
+                <field name="location_to_id"/>
+                
+                <filter string="Надходження" name="movements_in" domain="[('movement_type', '=', 'in')]"/>
+                <filter string="Списання" name="movements_out" domain="[('movement_type', '=', 'out')]"/>
+                <filter string="Переміщення" name="movements_transfer" domain="[('movement_type', '=', 'transfer')]"/>
+                <filter string="Коригування" name="movements_adjustment" domain="[('movement_type', '=', 'adjustment')]"/>
+                
+                <separator/>
+                <filter string="Сьогодні" name="today" domain="[('date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('date', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
+                <filter string="Цей тиждень" name="this_week" domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                <filter string="Цей місяць" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%Y-%m-01'))]"/>
+                
+                <group expand="0" string="Групування">
+                    <filter string="Партія" name="group_batch" context="{'group_by': 'batch_id'}"/>
+                    <filter string="Тип руху" name="group_movement_type" context="{'group_by': 'movement_type'}"/>
+                    <filter string="Тип операції" name="group_operation_type" context="{'group_by': 'operation_type'}"/>
+                    <filter string="Дата" name="group_date" context="{'group_by': 'date'}"/>
+                    <filter string="Користувач" name="group_user" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Stock Batch Movement Action -->
+    <record id="action_stock_batch_movement" model="ir.actions.act_window">
+        <field name="name">Рухи партій</field>
+        <field name="res_model">stock.batch.movement</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="stock_batch_movement_search_view"/>
+        <field name="context">{'search_default_this_month': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Рухи партій відображають всі операції!
+            </p>
+            <p>
+                Тут ви можете переглянути історію всіх рухів партій:
+                надходження, списання, переміщення та коригування.
+            </p>
+        </field>
+    </record>
+</odoo>

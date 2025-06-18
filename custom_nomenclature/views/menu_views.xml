@@ -1,0 +1,24 @@
+<odoo>
+        <data noupdate="1">
+        
+        <!--  Підменю для Товарів  -->
+        <menuitem id="menu_product_nomenclature_products" 
+            name="Номенклатура товарів" 
+            parent="stock.menu_stock_inventory_control" 
+            action="action_product_nomenclature" 
+            sequence="10"/>
+
+        <!--  Підменю для Категорій товарів у Налаштуваннях  -->
+        <menuitem id="menu_product_nomenclature_categories" 
+            name="Категорії товарів" 
+            parent="stock.menu_stock_inventory_control" 
+            action="action_product_nomenclature_category" 
+            sequence="20"/>
+
+        <menuitem id="menu_barcode_directory" 
+            name="Довідник штрих-кодів" 
+            parent="stock.menu_stock_config_settings" 
+            action="action_barcode_directory" 
+            sequence="30"/>
+        </data>
+</odoo>

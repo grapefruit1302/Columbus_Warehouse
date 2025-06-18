@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_partner_view_form_ext" model="ir.ui.view">
+        <field name="name">ires.partner</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales_purchases']//field[@name='user_id']" position="before">
+                <field name="is_customer"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="res_partner_property_view_form_ext" model="ir.ui.view">
+        <field name="name">res.partner</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='property_supplier_payment_term_id']" position="before">
+                <field name="is_vendor"/>
+            </xpath>
+        </field>
+
+    </record>
+    <record id="res_partner_property_view_search" model="ir.ui.view">
+        <field name="name">res.partner</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.res_partner_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='customer']" position="after">
+                <filter string="Customer Invoice" name="customer"
+                        domain="[('supplier_rank','&gt;', 0),('is_customer','=',True)]"/>
+            </xpath>
+            <xpath expr="//filter[@name='supplier']" position="after">
+                <filter string="Vendor Bills" name="supplier"
+                        domain="[('customer_rank','&gt;', 0),('is_vendor','=',True)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

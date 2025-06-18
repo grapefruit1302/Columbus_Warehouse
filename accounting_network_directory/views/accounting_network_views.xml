@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List View -->
+    <record id="accounting_network_directory_list" model="ir.ui.view">
+        <field name="name">accounting.network.directory.list</field>
+        <field name="model">accounting.network.directory</field>
+        <field name="arch" type="xml">
+            <list string="Мережі" editable="top">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="active" widget="boolean_toggle" invisible="0"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="accounting_network_directory_search" model="ir.ui.view">
+        <field name="name">accounting.network.directory.search</field>
+        <field name="model">accounting.network.directory</field>
+        <field name="arch" type="xml">
+            <search string="Мережі">
+                <field name="name"/>
+                <field name="company_id"/>
+                <filter string="Активні" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Архівовані" name="archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_accounting_network_directory" model="ir.actions.act_window">
+        <field name="name">Довідник мереж (Бухгалтерія)</field>
+        <field name="res_model">accounting.network.directory</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'default_create_inline': True, 'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                Створіть першу мережу
+            </p>
+            <p>
+                Тут ви можете налаштувати мережі.
+            </p>
+        </field>
+    </record>
+
+</odoo>

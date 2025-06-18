@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Вигляд для мастера -->
+    <record id="view_product_label_wizard_form" model="ir.ui.view">
+        <field name="name">product.label.wizard.form</field>
+        <field name="model">product.label.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Друк етикетки">
+                <group>
+                    <field name="product_name" readonly="1"/>
+                    <field name="barcode" readonly="1"/>
+                    <field name="label_size"/>
+                    <field name="copy_count"/>
+                </group>
+                <!-- Попередній перегляд етикетки -->
+                <group string="Попередній перегляд">
+                    <field name="label_preview" nolabel="1" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_print" string="Друк" type="object" class="oe_highlight"/>
+                    <button special="cancel" string="Скасувати" class="oe_link"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Дія для відкриття мастера -->
+    <record id="action_product_label_wizard" model="ir.actions.act_window">
+        <field name="name">Друк етикетки</field>
+        <field name="res_model">product.label.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_product_id': active_id}</field>
+    </record>
+</odoo>

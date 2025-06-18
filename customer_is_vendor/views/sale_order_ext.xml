@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <record id="axiom_is_customer_is_vendor.view_form_sale_order_inherit" model="ir.ui.view">
+        <field name="name">axiom_is_customer_is_vendor view_form_sale_order_inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="domain">[('customer_rank','>', 0)]</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

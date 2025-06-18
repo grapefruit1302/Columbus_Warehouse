@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stock Batch Pivot View -->
+    <record id="stock_batch_pivot_view" model="ir.ui.view">
+        <field name="name">stock.batch.pivot</field>
+        <field name="model">stock.batch</field>
+        <field name="arch" type="xml">
+            <pivot string="Аналіз партій">
+                <field name="nomenclature_id" type="row"/>
+                <field name="location_id" type="row"/>
+                <field name="state" type="col"/>
+                <field name="current_qty" type="measure"/>
+                <field name="available_qty" type="measure"/>
+                <field name="reserved_qty" type="measure"/>
+                <field name="initial_qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Stock Batch Graph View -->
+    <record id="stock_batch_graph_view" model="ir.ui.view">
+        <field name="name">stock.batch.graph</field>
+        <field name="model">stock.batch</field>
+        <field name="arch" type="xml">
+            <graph string="Аналіз партій" type="bar">
+                <field name="nomenclature_id"/>
+                <field name="current_qty" type="measure"/>
+                <field name="available_qty" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Batch Analysis Action -->
+    <record id="action_stock_batch_analysis" model="ir.actions.act_window">
+        <field name="name">Аналіз партій</field>
+        <field name="res_model">stock.batch</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <!-- Analysis Menu -->
+    <menuitem id="menu_stock_batch_analysis" 
+              name="Аналіз партій" 
+              parent="menu_stock_batch_management" 
+              action="action_stock_batch_analysis" 
+              sequence="30"/>
+
+    <!-- Stock Batch Movement Pivot View -->
+    <record id="stock_batch_movement_pivot_view" model="ir.ui.view">
+        <field name="name">stock.batch.movement.pivot</field>
+        <field name="model">stock.batch.movement</field>
+        <field name="arch" type="xml">
+            <pivot string="Аналіз рухів партій">
+                <field name="date" interval="month" type="col"/>
+                <field name="movement_type" type="row"/>
+                <field name="operation_type" type="row"/>
+                <field name="qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Stock Batch Movement Graph View -->
+    <record id="stock_batch_movement_graph_view" model="ir.ui.view">
+        <field name="name">stock.batch.movement.graph</field>
+        <field name="model">stock.batch.movement</field>
+        <field name="arch" type="xml">
+            <graph string="Рухи партій" type="line">
+                <field name="date" interval="day"/>
+                <field name="qty" type="measure"/>
+                <field name="movement_type"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Movement Analysis Action -->
+    <record id="action_stock_batch_movement_analysis" model="ir.actions.act_window">
+        <field name="name">Аналіз рухів партій</field>
+        <field name="res_model">stock.batch.movement</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="context">{'search_default_this_month': 1}</field>
+    </record>
+
+    <!-- Movement Analysis Menu -->
+    <menuitem id="menu_stock_batch_movement_analysis" 
+              name="Аналіз рухів" 
+              parent="menu_stock_batch_management" 
+              action="action_stock_batch_movement_analysis" 
+              sequence="40"/>
+</odoo>

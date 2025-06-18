@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>  
+       
+<templates id="template" xml:space="preserve">
+     <t t-if="is_employee" t-name="web_debug.WKDebug">
+        <div class="o-dropdown dropdown o-dropdown--no-caret">
+            <button class="dropdown-toggle o-dropdown--narrow oe_activate_debug_mode" t-on-click="oe_activate_debug_mode" title="Open Debug Mode" href="?debug">
+                <i class="fa fa-code"></i>
+            </button>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <report
+        id="action_report_product_label_wizard"
+        model="product.label.wizard"
+        string="Друк етикетки (Wizard)"
+        report_type="qweb-html"
+        name="custom_nomenclature.product_label_template"
+        file="custom_nomenclature.product_label_template"
+    />
+</odoo>

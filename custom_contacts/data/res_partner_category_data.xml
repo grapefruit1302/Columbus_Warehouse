@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="category_employee" model="res.partner.category">
+            <field name="name">Співробітники</field>
+        </record>
+        <record id="category_company" model="res.partner.category">
+            <field name="name">Компанії</field>
+        </record>
+        <record id="category_branch" model="res.partner.category">
+            <field name="name">Гілки компаній</field>
+        </record>
+        <record id="category_supplier" model="res.partner.category">
+            <field name="name">Постачальники</field>
+        </record>
+    </data>
+</odoo>

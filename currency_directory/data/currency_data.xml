@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="currency_uah" model="currency.directory">
+            <field name="name">Українська гривня</field>
+            <field name="short_name">UAH</field>
+            <field name="multiplicity">1</field>
+            <field name="rate">1.0</field>
+            <field name="active">True</field>
+        </record>
+        
+        <record id="currency_usd" model="currency.directory">
+            <field name="name">Долар США</field>
+            <field name="short_name">USD</field>
+            <field name="multiplicity">1</field>
+            <field name="rate">40.0</field>
+            <field name="active">True</field>
+        </record>
+        
+        <record id="currency_eur" model="currency.directory">
+            <field name="name">Євро</field>
+            <field name="short_name">EUR</field>
+            <field name="multiplicity">1</field>
+            <field name="rate">43.0</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

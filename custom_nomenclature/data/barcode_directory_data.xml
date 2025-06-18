@@ -1,0 +1,11 @@
+<odoo>
+    <data noupdate="0">
+        <record id="sequence_barcode_ean13" model="ir.sequence">
+            <field name="name">Barcode EAN13 Sequence</field>
+            <field name="code">barcode.directory.ean13</field>
+            <field name="prefix"></field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

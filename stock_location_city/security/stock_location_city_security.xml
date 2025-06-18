@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Правила доступу для всіх користувачів -->
+    <record id="access_stock_location_city" model="ir.model.access">
+        <field name="name">Населені пункти: доступ для всіх користувачів</field>
+        <field name="model_id" ref="model_stock_location_city"/>
+        <field name="group_id" ref="base.group_user"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- Правило фільтрації за компанією -->
+    <record id="rule_stock_location_city_company" model="ir.rule">
+        <field name="name">Населені пункти: фільтр за компанією</field>
+        <field name="model_id" ref="model_stock_location_city"/>
+        <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+</odoo>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Головне меню "Прихід" в розділі Склад -->
+        <menuitem id="menu_custom_stock_receipt_main"
+                  name="Прихід"
+                  parent="stock.menu_stock_root"
+                  sequence="15"/>
+
+        <!-- Підменю "Всі документи" (зведена таблиця) -->
+        <menuitem id="menu_custom_stock_receipt_dashboard"
+                  name="Всі документи"
+                  parent="menu_custom_stock_receipt_main"
+                  action="action_stock_receipt_dashboard"
+                  sequence="1"/>
+
+        <!-- Підменю "Прихідні накладні" -->
+        <menuitem id="menu_custom_stock_receipt_incoming"
+                  name="Прихідні накладні"
+                  parent="menu_custom_stock_receipt_main"
+                  action="action_stock_receipt_incoming"
+                  sequence="10"/>
+
+        <!-- Підменю "Акти оприходування" -->
+        <menuitem id="menu_custom_stock_receipt_disposal"
+                  name="Акти оприходування"
+                  parent="menu_custom_stock_receipt_main"
+                  action="action_stock_receipt_disposal"
+                  sequence="20"/>
+
+        <!-- Підменю "Повернення з сервісу" -->
+        <menuitem id="menu_custom_stock_receipt_return"
+                  name="Повернення з сервісу"
+                  parent="menu_custom_stock_receipt_main"
+                  action="action_stock_receipt_return"
+                  sequence="30"/>
+
+    </data>
+</odoo>

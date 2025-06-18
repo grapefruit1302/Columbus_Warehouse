@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Послідовності для нумерації документів -->
+        
+        <!-- Прихідна накладна -->
+        <record id="seq_stock_receipt_incoming" model="ir.sequence">
+            <field name="name">Прихідна накладна</field>
+            <field name="code">stock.receipt.incoming</field>
+            <field name="prefix"></field>
+            <field name="padding">8</field>
+            <field name="company_id" eval="False"/>
+            <field name="use_date_range">True</field>
+            <field name="implementation">standard</field>
+        </record>
+        
+        <!-- Акт оприходування -->
+        <record id="seq_stock_receipt_disposal" model="ir.sequence">
+            <field name="name">Акт оприходування</field>
+            <field name="code">stock.receipt.disposal</field>
+            <field name="prefix"></field>
+            <field name="padding">8</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        
+        <!-- Повернення з сервісу -->
+        <record id="seq_stock_receipt_return" model="ir.sequence">
+            <field name="name">Повернення з сервісу</field>
+            <field name="code">stock.receipt.return</field>
+            <field name="prefix"></field>
+            <field name="padding">8</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        
+    </data>
+</odoo>

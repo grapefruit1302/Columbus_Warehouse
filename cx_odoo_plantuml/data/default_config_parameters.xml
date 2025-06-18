@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <!-- Default PlantUML Server -->
+    <record id="cx_plantuml_server_url" model="ir.config_parameter">
+        <field name="key">cx_odoo_plantuml.cetmix_plantuml_server_url</field>
+        <field name="value">https://www.plantuml.com/plantuml/png</field>
+    </record>
+    <!-- Default Max Selection Field options shown on schema -->
+    <record id="cx_plantuml_max_selection" model="ir.config_parameter">
+        <field name="key">cx_odoo_plantuml.max_selection</field>
+        <field name="value">12</field>
+    </record>
+</odoo>

@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stock_batch_user,stock.batch.user,model_stock_batch,stock.group_stock_user,1,1,1,0
+access_stock_batch_manager,stock.batch.manager,model_stock_batch,stock.group_stock_manager,1,1,1,1
+access_stock_batch_movement_user,stock.batch.movement.user,model_stock_batch_movement,stock.group_stock_user,1,0,0,0
+access_stock_batch_movement_manager,stock.batch.movement.manager,model_stock_batch_movement,stock.group_stock_manager,1,1,1,1
+access_stock_batch_report_wizard_user,stock.batch.report.wizard.user,model_stock_batch_report_wizard,stock.group_stock_user,1,1,1,1
+access_stock_batch_report_data_user,stock.batch.report.data.user,model_stock_batch_report_data,stock.group_stock_user,1,1,1,1
