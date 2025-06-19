@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Послідовність для міграційних операцій (за потреби) -->
+        <record id="seq_warehouse_inventory_migration" model="ir.sequence">
+            <field name="name">Міграція складських залишків</field>
+            <field name="code">stock.warehouse.inventory.migration</field>
+            <field name="prefix">MIG</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        
+    </data>
+</odoo>

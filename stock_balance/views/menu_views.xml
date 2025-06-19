@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <!-- Меню в модулі Склад -->
-    <menuitem id="menu_stock_balance"
-              name="Залишки товарів"
-              parent="stock.menu_stock_root"
-              action="action_stock_balance"
-              sequence="30"/>
-</odoo>
