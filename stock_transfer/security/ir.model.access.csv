@@ -3,9 +3,7 @@ access_stock_transfer_user,stock.transfer.user,model_stock_transfer,stock.group_
 access_stock_transfer_manager,stock.transfer.manager,model_stock_transfer,stock.group_stock_manager,1,1,1,1
 access_stock_transfer_line_user,stock.transfer.line.user,model_stock_transfer_line,stock.group_stock_user,1,1,1,1
 access_stock_transfer_line_manager,stock.transfer.line.manager,model_stock_transfer_line,stock.group_stock_manager,1,1,1,1
+access_stock_transfer_batch_line_user,stock.transfer.batch.line.user,model_stock_transfer_batch_line,stock.group_stock_user,1,1,1,1
+access_stock_transfer_batch_line_manager,stock.transfer.batch.line.manager,model_stock_transfer_batch_line,stock.group_stock_manager,1,1,1,1
 access_stock_transfer_available_stock_user,stock.transfer.available.stock.user,model_stock_transfer_available_stock,stock.group_stock_user,1,1,1,1
 access_stock_transfer_available_stock_manager,stock.transfer.available.stock.manager,model_stock_transfer_available_stock,stock.group_stock_manager,1,1,1,1
-access_stock_transfer_add_items_wizard_user,stock.transfer.add.items.wizard.user,model_stock_transfer_add_items_wizard,stock.group_stock_user,1,1,1,1
-access_stock_transfer_add_items_wizard_manager,stock.transfer.add.items.wizard.manager,model_stock_transfer_add_items_wizard,stock.group_stock_manager,1,1,1,1
-access_stock_transfer_add_items_wizard_line_user,stock.transfer.add.items.wizard.line.user,model_stock_transfer_add_items_wizard_line,stock.group_stock_user,1,1,1,1
-access_stock_transfer_add_items_wizard_line_manager,stock.transfer.add.items.wizard.line.manager,model_stock_transfer_add_items_wizard_line,stock.group_stock_manager,1,1,1,1
