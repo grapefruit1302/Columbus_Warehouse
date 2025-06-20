@@ -1,75 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- List View для переміщень -->
-        <record id="view_stock_transfer_list" model="ir.ui.view">
-            <field name="name">stock.transfer.list</field>
-            <field name="model">stock.transfer</field>
-            <field name="arch" type="xml">
-                <list string="Переміщення товарів"
-                      decoration-info="state=='draft'" 
-                      decoration-warning="state=='confirmed'" 
-                      decoration-success="state=='done'"
-                      decoration-muted="state=='cancelled'">
-                    <field name="number"/>
-                    <field name="date"/>
-                    <field name="transfer_type"/>
-                    <field name="warehouse_from_id"/>
-                    <field name="warehouse_to_id"/>
-                    <field name="employee_from_id"/>
-                    <field name="employee_to_id"/>
-                    <field name="state" widget="badge"
-                           decoration-info="state=='draft'" 
-                           decoration-warning="state=='confirmed'" 
-                           decoration-success="state=='done'"
-                           decoration-danger="state=='cancelled'"/>
-                    <field name="company_id"/>
-                </list>
-            </field>
-        </record>
-
-        <!-- Form View для переміщень з контролем залишків та партій -->
+        <!-- Форма переміщення -->
         <record id="view_stock_transfer_form" model="ir.ui.view">
             <field name="name">stock.transfer.form</field>
             <field name="model">stock.transfer</field>
             <field name="arch" type="xml">
                 <form string="Переміщення товарів">
-                    <style>
-                        /* Стилі для виділення доступних залишків */
-                        .o_field_one2many .o_list_table td[data-name="max_available_qty"] {
-                            background-color: #e8f5e8 !important;
-                            font-weight: bold;
-                        }
-                        
-                        .o_field_one2many .o_list_table td[data-name="available_batches"] {
-                            background-color: #fff3cd !important;
-                            font-size: 11px;
-                        }
-                        
-                        .insufficient_stock {
-                            background-color: #f8d7da !important;
-                        }
-                        
-                        .o_stock_transfer_form .oe_title {
-                            margin-bottom: 16px;
-                        }
-                    </style>
-                    
                     <header>
                         <button name="action_confirm" string="Підтвердити" type="object" 
                                 class="btn-primary" invisible="state != 'draft'"/>
-                        <button name="action_done" string="Виконати" type="object" 
+                        <button name="action_done" string="Провести" type="object" 
                                 class="btn-primary" invisible="state != 'confirmed'"/>
                         <button name="action_cancel" string="Скасувати" type="object" 
                                 invisible="state in ['done', 'cancelled']"/>
                         <button name="action_draft" string="В чернетку" type="object" 
                                 invisible="state != 'cancelled'"/>
+                        
+                        <!-- Кнопка додавання всіх доступних товарів -->
+                        <button name="action_add_all_available_items" string="Додати всі доступні товари" 
+                                type="object" invisible="state != 'draft' or not available_stock_ids"
+                                class="btn-secondary" help="Додає всі товари, що є на залишку"/>
+                        
                         <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
                     </header>
                     
-                    <sheet class="o_stock_transfer_form">
+                    <sheet>
                         <div class="oe_title">
-                            <label for="number" class="oe_edit_only"/>
                             <h1>
                                 <field name="number" readonly="1"/>
                             </h1>
@@ -78,40 +35,48 @@
                         <group>
                             <group>
                                 <field name="date" readonly="state in ['done', 'cancelled']"/>
+                                <field name="company_id" readonly="state in ['done', 'cancelled']" 
+                                       options="{'no_create': True}"/>
                                 <field name="transfer_type" readonly="state in ['done', 'cancelled']"/>
-                                <field name="company_id" readonly="state in ['done', 'cancelled']"/>
-                                <field name="no_vat"/>
                             </group>
                             <group>
                                 <field name="warehouse_from_id" 
                                        invisible="transfer_type in ['employee', 'employee_warehouse']"
                                        required="transfer_type in ['warehouse', 'warehouse_employee']"
-                                       readonly="state in ['done', 'cancelled']"/>
+                                       readonly="state in ['done', 'cancelled']"
+                                       options="{'no_create': True}"/>
                                 <field name="warehouse_to_id" 
-                                       invisible="transfer_type in ['employee', 'warehouse_employee']"
+                                       invisible="transfer_type in ['employee', 'employee_warehouse']"
                                        required="transfer_type in ['warehouse', 'employee_warehouse']"
-                                       readonly="state in ['done', 'cancelled']"/>
+                                       readonly="state in ['done', 'cancelled']"
+                                       options="{'no_create': True}"/>
                                 <field name="employee_from_id" 
                                        invisible="transfer_type in ['warehouse', 'warehouse_employee']"
                                        required="transfer_type in ['employee', 'employee_warehouse']"
-                                       readonly="state in ['done', 'cancelled']"/>
+                                       readonly="state in ['done', 'cancelled']"
+                                       options="{'no_create': True}"/>
                                 <field name="employee_to_id" 
                                        invisible="transfer_type in ['warehouse', 'employee_warehouse']"
                                        required="transfer_type in ['employee', 'warehouse_employee']"
-                                       readonly="state in ['done', 'cancelled']"/>
+                                       readonly="state in ['done', 'cancelled']"
+                                       options="{'no_create': True}"/>
                                 <field name="posting_datetime" readonly="1" invisible="not posting_datetime"/>
                             </group>
                         </group>
                         
+                        <!-- Приховані поля для роботи -->
+                        <field name="available_stock_ids" invisible="1"/>
+                        <field name="total_lines" invisible="1"/>
+                        <field name="total_qty" invisible="1"/>
+                        <field name="total_amount_no_vat" invisible="1"/>
+                        
                         <!-- Інформація про доступні залишки -->
-                        <div class="alert alert-info" role="alert" 
-                             invisible="not available_stock_ids">
+                        <div class="alert alert-info" role="alert" invisible="not available_stock_ids">
                             <h5><i class="fa fa-info-circle"/> Доступні залишки</h5>
-                            <p>У джерелі переміщення знайдено <strong><span t-esc="len(available_stock_ids)"/></strong> позицій товарів.</p>
+                            <p>У джерелі переміщення знайдені товари на залишку. Ви можете додати їх до документа.</p>
                         </div>
                         
-                        <div class="alert alert-warning" role="alert" 
-                             invisible="available_stock_ids">
+                        <div class="alert alert-warning" role="alert" invisible="available_stock_ids">
                             <h5><i class="fa fa-exclamation-triangle"/> Залишки відсутні</h5>
                             <p>У вибраному джерелі переміщення немає товарів на залишку. 
                                Перевірте правильність вибору складу/працівника.</p>
@@ -121,7 +86,7 @@
                             <page string="Позиції переміщення">
                                 <field name="line_ids" readonly="state in ['done', 'cancelled']">
                                     <list editable="bottom" 
-                                          decoration-danger="qty > max_available_qty"
+                                          decoration-danger="qty &gt; max_available_qty"
                                           decoration-warning="max_available_qty == 0"
                                           create="state not in ['done', 'cancelled'] and available_stock_ids"
                                           delete="state not in ['done', 'cancelled']">
@@ -129,7 +94,11 @@
                                         <!-- Товар (тільки з доступних) -->
                                         <field name="nomenclature_id" 
                                                required="1"
+                                               domain="[('id', 'in', available_nomenclature_ids)]"
                                                options="{'no_create': True, 'no_edit': False}"/>
+                                        
+                                        <!-- Приховане поле для доступних товарів -->
+                                        <field name="available_nomenclature_ids" invisible="1"/>
                                         
                                         <!-- Партія/Лот -->
                                         <field name="lot_batch" 
@@ -143,65 +112,88 @@
                                                optional="show"/>
                                         
                                         <!-- Одиниця виміру -->
-                                        <field name="selected_uom_id" required="1"/>
+                                        <field name="selected_uom_id" required="1" 
+                                               options="{'no_create': True}"/>
                                         
                                         <!-- Кількість -->
                                         <field name="qty" required="1"/>
                                         
-                                        <!-- Максимально доступно -->
-                                        <field name="max_available_qty" 
-                                               readonly="1" 
-                                               string="Доступно"
-                                               decoration-danger="qty > max_available_qty"
-                                               decoration-success="max_available_qty > 0"/>
+                                        <!-- Максимально доступна кількість -->
+                                        <field name="max_available_qty" readonly="1" 
+                                               string="Макс. доступно"
+                                               optional="show"/>
                                         
-                                        <!-- Кнопка взяти всю партію -->
-                                        <button name="action_take_full_batch" 
+                                        <!-- Ціна без ПДВ -->
+                                        <field name="price_unit_no_vat" 
+                                               string="Ціна без ПДВ"/>
+                                        
+                                        <!-- Сума без ПДВ -->
+                                        <field name="amount_no_vat" readonly="1" 
+                                               string="Сума без ПДВ"/>
+                                        
+                                        <!-- Кнопка для взяття повної партії -->
+                                        <button name="action_take_full_batch" type="object" 
                                                 string="Взяти всю партію" 
-                                                type="object" 
-                                                class="btn-sm btn-secondary" 
-                                                icon="fa-arrows-alt"
-                                                invisible="max_available_qty == 0"/>
-                                        
-                                        <!-- Фінансові поля -->
-                                        <field name="price_unit_no_vat" optional="hide"/>
-                                        <field name="amount_no_vat" readonly="1" optional="hide"/>
-                                        <field name="vat_rate" column_invisible="parent.no_vat" optional="hide"/>
-                                        <field name="vat_amount" column_invisible="parent.no_vat" readonly="1" optional="hide"/>
-                                        <field name="amount_with_vat" column_invisible="parent.no_vat" readonly="1" optional="hide"/>
-                                        
-                                        <!-- Приховані поля для обчислень -->
-                                        <field name="available_nomenclature_ids" column_invisible="1"/>
+                                                icon="fa-arrow-down"
+                                                invisible="not nomenclature_id or not lot_batch or max_available_qty == 0"
+                                                help="Встановити кількість рівну всій доступній кількості партії"/>
                                     </list>
                                 </field>
                                 
                                 <!-- Довідкова інформація про доступні залишки -->
-                                <group string="Довідка: доступні товари" invisible="not available_stock_ids or state in ['done', 'cancelled']" col="1">
+                                <group string="📋 Довідка: доступні товари на залишку" 
+                                       invisible="not available_stock_ids or state in ['done', 'cancelled']" 
+                                       col="1">
+                                    <div class="alert alert-info">
+                                        <strong>💡 Підказка:</strong> Нижче показані всі товари, які є на залишку у вибраного відправника.
+                                    </div>
+                                    
                                     <field name="available_stock_ids" nolabel="1" readonly="1">
                                         <list string="Доступні товари на залишку" create="false" edit="false" delete="false">
-                                            <field name="nomenclature_id" string="Товар"/>
-                                            <field name="lot_batch" string="Партія"/>
-                                            <field name="available_qty" string="Доступна кількість"/>
+                                            <field name="nomenclature_id" string="🏷️ Товар"/>
+                                            <field name="lot_batch" string="📦 Партія/Лот"/>
+                                            <field name="available_qty" string="📊 Доступна кількість"/>
+                                            <field name="location_id" string="📍 Локація" 
+                                                   invisible="not location_id"/>
                                         </list>
                                     </field>
                                 </group>
                                 
+                                <!-- Статистика документа -->
+                                <group string="📈 Статистика документа" col="4" invisible="not line_ids">
+                                    <field name="total_lines" string="Кількість позицій" readonly="1"/>
+                                    <field name="total_qty" string="Загальна кількість" readonly="1"/>
+                                    <field name="total_amount_no_vat" string="Сума без ПДВ" readonly="1"/>
+                                </group>
+                                
                                 <!-- Інструкції для користувача -->
-                                <div class="alert alert-info mt-3" role="alert">
-                                    <h6><i class="fa fa-lightbulb-o"/> Поради:</h6>
-                                    <ul class="mb-0">
-                                        <li>Спочатку оберіть джерело переміщення (склад або працівник)</li>
-                                        <li>Система покаже тільки товари, які є на залишку</li>
-                                        <li>Червоним кольором відмічені рядки з недостатньою кількістю</li>
-                                        <li>Використовуйте кнопку "Взяти всю партію" для переміщення повної партії товару</li>
-                                        <li>У довідці нижче видно всі доступні товари та їх партії</li>
-                                    </ul>
+                                <div class="alert alert-info mt-3" role="alert" invisible="state in ['done', 'cancelled']">
+                                    <h6><i class="fa fa-lightbulb-o"/> 💡 Інструкція:</h6>
+                                    <ol class="mb-0">
+                                        <li><strong>Оберіть тип переміщення</strong></li>
+                                        <li><strong>Вкажіть відправника</strong> - система покаже доступні товари</li>
+                                        <li><strong>Додайте товари:</strong>
+                                            <ul>
+                                                <li>🖱️ Вручну - оберіть товар з списку</li>
+                                                <li>⚡ Автоматично - кнопка "Додати всі доступні товари"</li>
+                                                <li>📦 По партіях - кнопка "Взяти всю партію"</li>
+                                            </ul>
+                                        </li>
+                                        <li><strong>Підтвердіть та проведіть</strong> документ</li>
+                                    </ol>
+                                    
+                                    <div class="mt-2">
+                                        <span class="badge badge-success">✅ Зелений</span> - все добре
+                                        <span class="badge badge-danger ml-2">❌ Червоний</span> - перевищено залишки
+                                        <span class="badge badge-warning ml-2">⚠️ Жовтий</span> - потребує уваги
+                                    </div>
                                 </div>
                             </page>
                             
                             <page string="Додаткова інформація">
                                 <group>
                                     <field name="notes" placeholder="Введіть примітки..."/>
+                                    <field name="no_vat" string="Без ПДВ"/>
                                 </group>
                             </page>
                         </notebook>
@@ -209,6 +201,29 @@
                     
                     <chatter/>
                 </form>
+            </field>
+        </record>
+
+        <!-- List View для переміщень -->
+        <record id="view_stock_transfer_list" model="ir.ui.view">
+            <field name="name">stock.transfer.list</field>
+            <field name="model">stock.transfer</field>
+            <field name="arch" type="xml">
+                <list string="Переміщення товарів" default_order="date desc, number desc">
+                    <field name="number"/>
+                    <field name="date"/>
+                    <field name="transfer_type"/>
+                    <field name="warehouse_from_id" optional="show"/>
+                    <field name="warehouse_to_id" optional="show"/>
+                    <field name="employee_from_id" optional="show"/>
+                    <field name="employee_to_id" optional="show"/>
+                    <field name="total_lines" string="Позицій"/>
+                    <field name="total_qty" string="Загальна к-ть"/>
+                    <field name="state" decoration-success="state == 'done'" 
+                           decoration-info="state == 'confirmed'" 
+                           decoration-muted="state == 'cancelled'"/>
+                    <field name="posting_datetime" optional="hide"/>
+                </list>
             </field>
         </record>
 
@@ -274,18 +289,6 @@
                 </ul>
             </field>
         </record>
-
-        <!-- Меню -->
-        <menuitem id="menu_stock_transfer_main"
-                  name="Переміщення товарів"
-                  parent="stock.menu_stock_root"
-                  sequence="25"/>
-                  
-        <menuitem id="menu_stock_transfer"
-                  name="Переміщення"
-                  parent="menu_stock_transfer_main"
-                  action="action_stock_transfer"
-                  sequence="10"/>
 
     </data>
 </odoo>

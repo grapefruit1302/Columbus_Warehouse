@@ -81,7 +81,35 @@ class StockTransfer(models.Model):
         string='Без ПДВ',
         default=False
     )
-    
+
+    # Додаємо поле для зберігання доступних товарів на залишку
+    available_stock_ids = fields.One2many(
+        'stock.transfer.available.stock',
+        'transfer_id',
+        string='Доступні залишки',
+        compute='_compute_available_stock'
+    )
+
+    # Поля для статистики
+    total_lines = fields.Integer(
+        string='Кількість позицій',
+        compute='_compute_totals',
+        store=True
+    )
+
+    total_qty = fields.Float(
+        string='Загальна кількість',
+        compute='_compute_totals',
+        store=True
+    )
+
+    total_amount_no_vat = fields.Float(
+        string='Сума без ПДВ',
+        compute='_compute_totals',
+        store=True,
+        digits='Product Price'
+    )
+        
     # Додаємо поле для зберігання доступних товарів на залишку
     available_stock_ids = fields.One2many(
         'stock.transfer.available.stock',
@@ -124,76 +152,214 @@ class StockTransfer(models.Model):
             
             record.available_stock_ids = available_stock_lines
 
-    def _get_warehouse_stock(self, warehouse, company):
-        """Отримує залишки товарів на складі для конкретної компанії"""
-        # Тут потрібна логіка для отримання залишків з вашої системи
-        # Припускаю, що у вас є модель для залишків або зв'язок з stock.quant
+    @api.depends('line_ids.qty', 'line_ids.amount_no_vat')
+    def _compute_totals(self):
+        """Обчислює загальні суми по документу"""
+        for record in self:
+            record.total_lines = len(record.line_ids)
+            record.total_qty = sum(record.line_ids.mapped('qty'))
+            record.total_amount_no_vat = sum(record.line_ids.mapped('amount_no_vat'))
+
+
+    def _add_all_available_items(self, replace_existing=False):
+        """Внутрішній метод для додавання всіх доступних товарів"""
+        lines_to_create = []
+        updated_lines = 0
         
-        # Приклад запиту (адаптуйте під вашу структуру):
+        if replace_existing:
+            # Видаляємо всі існуючі позиції
+            self.line_ids = [(5, 0, 0)]
+        
+        for stock in self.available_stock_ids:
+            # Перевіряємо чи не існує вже така позиція
+            existing_line = self.line_ids.filtered(
+                lambda l: l.nomenclature_id.id == stock.nomenclature_id.id and 
+                        l.lot_batch == stock.lot_batch
+            )
+            
+            if existing_line:
+                # Оновлюємо існуючу позицію
+                existing_line[0].write({
+                    'qty': stock.available_qty,
+                    'price_unit_no_vat': stock.nomenclature_id.price_usd if hasattr(stock.nomenclature_id, 'price_usd') else 0.0,
+                })
+                updated_lines += 1
+            else:
+                # Створюємо нову позицію
+                line_vals = {
+                    'nomenclature_id': stock.nomenclature_id.id,
+                    'lot_batch': stock.lot_batch,
+                    'qty': stock.available_qty,
+                    'selected_uom_id': stock.nomenclature_id.base_uom_id.id if stock.nomenclature_id.base_uom_id else False,
+                    'price_unit_no_vat': stock.nomenclature_id.price_usd if hasattr(stock.nomenclature_id, 'price_usd') else 0.0,
+                }
+                lines_to_create.append((0, 0, line_vals))
+        
+        # Додаємо нові позиції
+        if lines_to_create:
+            self.write({'line_ids': lines_to_create})
+        
+        # Показуємо результат
+        message = f"✅ Операція завершена успішно!\n"
+        if lines_to_create:
+            message += f"➕ Додано нових позицій: {len(lines_to_create)}\n"
+        if updated_lines:
+            message += f"🔄 Оновлено існуючих позицій: {updated_lines}\n"
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Товари додані!',
+                'message': message,
+                'type': 'success',
+            }
+        }
+        
+
+    @api.onchange('warehouse_from_id', 'employee_from_id')
+    def _onchange_source_clear_lines(self):
+        """Очищаємо позиції при зміні відправника"""
+        if self.line_ids:
+            self.line_ids = [(5, 0, 0)]
+            return {
+                'warning': {
+                    'title': 'Увага!',
+                    'message': 'При зміні відправника всі додані позиції товарів були очищені.'
+                }
+            }
+
+
+    def _get_warehouse_stock(self, warehouse, company):
+        """Отримує залишки товарів на складі"""
         stock_data = []
         
-        # Якщо у вас є модель stock.balance або подібна
-        if hasattr(self.env, 'stock.balance'):
-            balances = self.env['stock.balance'].search([
-                ('warehouse_id', '=', warehouse.id),
-                ('company_id', '=', company.id),
-                ('qty_available', '>', 0)
-            ])
-            
-            for balance in balances:
-                stock_data.append({
-                    'nomenclature_id': balance.nomenclature_id.id,
-                    'lot_batch': balance.lot_batch or 'Без партії',
-                    'available_qty': balance.qty_available,
-                    'location_id': balance.location_id.id if balance.location_id else False,
-                })
+        if not warehouse:
+            return stock_data
         
-        # Альтернатива через stock.quant (якщо використовуєте стандартні stock модулі)
-        else:
-            quants = self.env['stock.quant'].search([
-                ('location_id.warehouse_id', '=', warehouse.id),
-                ('company_id', '=', company.id),
-                ('quantity', '>', 0)
-            ])
-            
-            for quant in quants:
-                # Знаходимо відповідну номенклатуру
-                nomenclature = self.env['product.nomenclature'].search([
-                    ('name', '=', quant.product_id.name)  # або інший зв'язок
-                ], limit=1)
+        # Отримуємо всі локації складу
+        warehouse_locations = self.env['stock.location'].search([
+            ('location_id', 'child_of', warehouse.lot_stock_id.id),
+            ('usage', '=', 'internal')
+        ])
+        
+        # Знаходимо всі кванти товарів в цих локаціях
+        quants = self.env['stock.quant'].search([
+            ('location_id', 'in', warehouse_locations.ids),
+            ('quantity', '>', 0),
+            ('company_id', '=', company.id)
+        ])
+        
+        # Групуємо по товарах та партіях
+        stock_dict = {}
+        for quant in quants:
+            # Шукаємо номенклатуру по назві або коду продукту
+            nomenclature = self.env['product.nomenclature'].search([
+                '|',
+                ('name', '=', quant.product_id.name),
+                ('code', '=', quant.product_id.default_code)
+            ], limit=1)
                 
-                if nomenclature:
-                    stock_data.append({
-                        'nomenclature_id': nomenclature.id,
-                        'lot_batch': quant.lot_id.name if quant.lot_id else 'Без партії',
-                        'available_qty': quant.quantity,
-                        'location_id': quant.location_id.id,
-                    })
+            if not nomenclature:
+                continue
+                
+            lot_batch = quant.lot_id.name if quant.lot_id else 'Без партії'
+            key = (nomenclature.id, lot_batch, quant.location_id.id)
+            
+            if key in stock_dict:
+                stock_dict[key]['available_qty'] += quant.quantity
+            else:
+                stock_dict[key] = {
+                    'nomenclature_id': nomenclature.id,
+                    'lot_batch': lot_batch,
+                    'available_qty': quant.quantity,
+                    'location_id': quant.location_id.id,
+                }
         
-        return stock_data
+        return list(stock_dict.values())
 
     def _get_employee_stock(self, employee, company):
         """Отримує залишки товарів у працівника"""
-        # Тут логіка для отримання залишків працівника
-        # Можливо у вас є окрема модель employee.stock або подібна
         stock_data = []
         
-        if hasattr(self.env, 'employee.stock'):
-            employee_stock = self.env['employee.stock'].search([
-                ('employee_id', '=', employee.id),
-                ('company_id', '=', company.id),
-                ('qty_available', '>', 0)
+        if not employee:
+            return stock_data
+        
+        # Створюємо або знаходимо локацію працівника
+        employee_location = self._get_employee_location(employee, company)
+        
+        if employee_location:
+            # Отримуємо кванти з локації працівника
+            quants = self.env['stock.quant'].search([
+                ('location_id', '=', employee_location.id),
+                ('quantity', '>', 0),
+                ('company_id', '=', company.id)
             ])
             
-            for stock in employee_stock:
-                stock_data.append({
-                    'nomenclature_id': stock.nomenclature_id.id,
-                    'lot_batch': stock.lot_batch or 'Без партії',
-                    'available_qty': stock.qty_available,
-                    'location_id': False,  # Працівники можуть не мати фізичних локацій
-                })
+            # Конвертуємо в потрібний формат
+            stock_dict = {}
+            for quant in quants:
+                # Знаходимо номенклатуру
+                nomenclature = self.env['product.nomenclature'].search([
+                    '|',
+                    ('name', '=', quant.product_id.name),
+                    ('code', '=', quant.product_id.default_code)
+                ], limit=1)
+                    
+                if not nomenclature:
+                    continue
+                    
+                lot_batch = quant.lot_id.name if quant.lot_id else 'Без партії'
+                key = (nomenclature.id, lot_batch)
+                
+                if key in stock_dict:
+                    stock_dict[key]['available_qty'] += quant.quantity
+                else:
+                    stock_dict[key] = {
+                        'nomenclature_id': nomenclature.id,
+                        'lot_batch': lot_batch,
+                        'available_qty': quant.quantity,
+                        'location_id': employee_location.id,
+                    }
+            
+            stock_data = list(stock_dict.values())
         
         return stock_data
+    
+
+    def _get_employee_location(self, employee, company):
+        """Отримує або створює локацію працівника"""
+        employee_location = self.env['stock.location'].search([
+            ('name', '=', f'Employee: {employee.name}'),
+            ('usage', '=', 'internal'),
+            ('company_id', '=', company.id)
+        ], limit=1)
+        
+        if not employee_location:
+            # Створюємо локацію працівника якщо її немає
+            parent_location = self.env['stock.location'].search([
+                ('name', '=', 'Employees'),
+                ('usage', '=', 'view'),
+                ('company_id', '=', company.id)
+            ], limit=1)
+            
+            if not parent_location:
+                # Створюємо батьківську локацію для працівників
+                parent_location = self.env['stock.location'].create({
+                    'name': 'Employees',
+                    'usage': 'view',
+                    'location_id': self.env.ref('stock.stock_location_locations').id,
+                    'company_id': company.id,
+                })
+            
+            employee_location = self.env['stock.location'].create({
+                'name': f'Employee: {employee.name}',
+                'usage': 'internal',
+                'location_id': parent_location.id,
+                'company_id': company.id,
+            })
+        
+        return employee_location
 
     def action_confirm(self):
         # Перевіряємо залишки перед підтвердженням
@@ -256,6 +422,18 @@ class StockTransferLine(models.Model):
         string='Переміщення',
         required=True,
         ondelete='cascade'
+    )
+
+    available_nomenclature_ids = fields.Many2many(
+    'product.nomenclature',
+    compute='_compute_available_nomenclature',
+    string='Доступні товари'
+    )
+
+    max_available_qty = fields.Float(
+        string='Максимально доступно',
+        compute='_compute_max_available_qty',
+        help='Максимальна доступна кількість для вибраної партії'
     )
     
     nomenclature_id = fields.Many2one(
@@ -334,8 +512,10 @@ class StockTransferLine(models.Model):
         """Обчислює список доступних товарів на залишку"""
         for line in self:
             if line.transfer_id.available_stock_ids:
+                # Отримуємо унікальні номенклатури з залишків
                 available_ids = line.transfer_id.available_stock_ids.mapped('nomenclature_id').ids
-                line.available_nomenclature_ids = [(6, 0, available_ids)]
+                unique_ids = list(set(available_ids))
+                line.available_nomenclature_ids = [(6, 0, unique_ids)]
             else:
                 line.available_nomenclature_ids = [(6, 0, [])]
 
@@ -358,7 +538,7 @@ class StockTransferLine(models.Model):
             if line.nomenclature_id and line.transfer_id.available_stock_ids:
                 stock_record = line.transfer_id.available_stock_ids.filtered(
                     lambda x: x.nomenclature_id.id == line.nomenclature_id.id and 
-                             x.lot_batch == line.lot_batch
+                            x.lot_batch == line.lot_batch
                 )
                 line.max_available_qty = stock_record.available_qty if stock_record else 0
             else:
@@ -373,18 +553,29 @@ class StockTransferLine(models.Model):
 
     @api.onchange('nomenclature_id')
     def _onchange_nomenclature_id(self):
+        """При зміні номенклатури оновлюємо залежні поля"""
         if self.nomenclature_id:
-            # Встановлюємо одиницю виміру
-            if hasattr(self.nomenclature_id, 'base_uom_id'):
+            # Встановлюємо базову одиницю виміру
+            if hasattr(self.nomenclature_id, 'base_uom_id') and self.nomenclature_id.base_uom_id:
                 self.selected_uom_id = self.nomenclature_id.base_uom_id
             
             # Очищаємо партію при зміні товару
             self.lot_batch = False
             self.qty = 1.0
             
-            # Встановлюємо ціну якщо є
-            if hasattr(self.nomenclature_id, 'price_usd'):
+            # Встановлюємо ціну якщо є в номенклатурі
+            if hasattr(self.nomenclature_id, 'price_usd') and self.nomenclature_id.price_usd:
                 self.price_unit_no_vat = self.nomenclature_id.price_usd
+            
+            # Автоматично вибираємо першу доступну партію якщо є тільки одна
+            available_stocks = self.transfer_id.available_stock_ids.filtered(
+                lambda x: x.nomenclature_id.id == self.nomenclature_id.id
+            )
+            
+            if len(available_stocks) == 1:
+                self.lot_batch = available_stocks[0].lot_batch
+                if available_stocks[0].available_qty > 0:
+                    self.qty = available_stocks[0].available_qty
 
     @api.onchange('lot_batch')
     def _onchange_lot_batch(self):
@@ -400,10 +591,22 @@ class StockTransferLine(models.Model):
                 }
 
     def action_take_full_batch(self):
-        """Кнопка для взяття повної партії"""
+        """Кнопка для взяття повної доступної кількості з партії"""
         self.ensure_one()
-        if self.max_available_qty > 0:
-            self.qty = self.max_available_qty
+        
+        if not self.nomenclature_id or not self.lot_batch:
+            raise UserError('Спочатку оберіть товар та партію!')
+        
+        # Знаходимо доступну кількість для вибраної партії
+        matching_stock = self.transfer_id.available_stock_ids.filtered(
+            lambda x: x.nomenclature_id.id == self.nomenclature_id.id and 
+                    x.lot_batch == self.lot_batch
+        )
+        
+        if matching_stock and matching_stock[0].available_qty > 0:
+            self.qty = matching_stock[0].available_qty
+
+
 
     def _validate_stock_availability(self):
         """Перевіряє чи достатньо товару на залишку"""
