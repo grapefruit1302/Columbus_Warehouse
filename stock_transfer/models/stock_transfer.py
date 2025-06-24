@@ -1,5 +1,3 @@
-# stock_transfer/models/stock_transfer.py
-
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
 from datetime import datetime
@@ -78,6 +76,11 @@ class StockTransfer(models.Model):
         string='Час проведення',
         readonly=True
     )
+    
+    no_vat = fields.Boolean(
+        string='Без ПДВ',
+        default=False
+    )
 
     @api.model
     def create(self, vals):
@@ -118,11 +121,6 @@ class StockTransfer(models.Model):
         # Очищаємо позиції при зміні типу
         self.line_ids = [(5, 0, 0)]
 
-    @api.onchange('warehouse_from_id', 'employee_from_id')
-    def _onchange_from_location(self):
-        """При зміні відправника очищаємо позиції"""
-        self.line_ids = [(5, 0, 0)]
-
 
 class StockTransferLine(models.Model):
     _name = 'stock.transfer.line'
@@ -138,15 +136,12 @@ class StockTransferLine(models.Model):
     nomenclature_id = fields.Many2one(
         'product.nomenclature',
         string='Номенклатура',
-        required=True,
-        domain="[('id', 'in', available_nomenclature_ids)]"
+        required=True
     )
     
-    # Поле для фільтрації доступної номенклатури
-    available_nomenclature_ids = fields.Many2many(
-        'product.nomenclature',
-        compute='_compute_available_nomenclature',
-        string='Доступна номенклатура'
+    lot_batch = fields.Char(
+        string='Партія/Лот',
+        help='Партія або лот товару'
     )
     
     selected_uom_id = fields.Many2one(
@@ -158,180 +153,51 @@ class StockTransferLine(models.Model):
     qty = fields.Float(
         string='Кількість',
         required=True,
-        default=1.0,
-        digits='Product Unit of Measure'
+        default=1.0
     )
     
-    # Поле для відображення доступної кількості
-    available_qty = fields.Float(
-        'Доступна кількість',
-        compute='_compute_available_qty',
-        help='Доступна кількість в локації відправника'
+    price_unit_no_vat = fields.Float(
+        string='Ціна без ПДВ',
+        default=0.0
     )
     
-    # Поля для відображення партій (тільки для читання)
-    batch_info = fields.Text(
-        'Інформація про партії',
-        compute='_compute_batch_info',
-        help='Показує які партії будуть використані по FIFO'
+    vat_rate = fields.Float(
+        string='Ставка ПДВ',
+        default=20.0
+    )
+    
+    amount_no_vat = fields.Float(
+        string='Сума без ПДВ',
+        compute='_compute_amounts',
+        store=True
+    )
+    
+    vat_amount = fields.Float(
+        string='Сума ПДВ',
+        compute='_compute_amounts',
+        store=True
+    )
+    
+    amount_with_vat = fields.Float(
+        string='Сума з ПДВ',
+        compute='_compute_amounts',
+        store=True
     )
 
-    @api.depends('transfer_id.transfer_type', 'transfer_id.warehouse_from_id', 
-                 'transfer_id.employee_from_id', 'transfer_id.company_id')
-    def _compute_available_nomenclature(self):
-        """Обчислює доступну номенклатуру в залежності від локації відправника"""
+    @api.depends('qty', 'price_unit_no_vat', 'vat_rate')
+    def _compute_amounts(self):
         for line in self:
-            if not line.transfer_id:
-                line.available_nomenclature_ids = [(6, 0, [])]
-                continue
-                
-            transfer = line.transfer_id
-            Balance = self.env['stock.balance']
-            
-            # Визначаємо параметри для пошуку
-            domain = [
-                ('company_id', '=', transfer.company_id.id),
-                ('qty_available', '>', 0),
-            ]
-            
-            if transfer.transfer_type in ['warehouse', 'warehouse_employee']:
-                if transfer.warehouse_from_id:
-                    domain.extend([
-                        ('location_type', '=', 'warehouse'),
-                        ('warehouse_id', '=', transfer.warehouse_from_id.id)
-                    ])
-                else:
-                    line.available_nomenclature_ids = [(6, 0, [])]
-                    continue
-            elif transfer.transfer_type in ['employee', 'employee_warehouse']:
-                if transfer.employee_from_id:
-                    domain.extend([
-                        ('location_type', '=', 'employee'),
-                        ('employee_id', '=', transfer.employee_from_id.id)
-                    ])
-                else:
-                    line.available_nomenclature_ids = [(6, 0, [])]
-                    continue
-            else:
-                line.available_nomenclature_ids = [(6, 0, [])]
-                continue
-            
-            # Знаходимо всі залишки з товарами
-            balances = Balance.search(domain)
-            nomenclature_ids = balances.mapped('nomenclature_id.id')
-            
-            line.available_nomenclature_ids = [(6, 0, nomenclature_ids)]
-
-    @api.depends('nomenclature_id', 'transfer_id.transfer_type', 
-                 'transfer_id.warehouse_from_id', 'transfer_id.employee_from_id')
-    def _compute_available_qty(self):
-        """Обчислює доступну кількість товару"""
-        for line in self:
-            if not line.nomenclature_id or not line.transfer_id:
-                line.available_qty = 0.0
-                continue
-            
-            Balance = self.env['stock.balance']
-            transfer = line.transfer_id
-            
-            if transfer.transfer_type in ['warehouse', 'warehouse_employee']:
-                if transfer.warehouse_from_id:
-                    line.available_qty = Balance.get_available_qty(
-                        nomenclature_id=line.nomenclature_id.id,
-                        location_type='warehouse',
-                        warehouse_id=transfer.warehouse_from_id.id,
-                        company_id=transfer.company_id.id
-                    )
-                else:
-                    line.available_qty = 0.0
-            elif transfer.transfer_type in ['employee', 'employee_warehouse']:
-                if transfer.employee_from_id:
-                    line.available_qty = Balance.get_available_qty(
-                        nomenclature_id=line.nomenclature_id.id,
-                        location_type='employee',
-                        employee_id=transfer.employee_from_id.id,
-                        company_id=transfer.company_id.id
-                    )
-                else:
-                    line.available_qty = 0.0
-            else:
-                line.available_qty = 0.0
-
-    @api.depends('nomenclature_id', 'qty', 'transfer_id.transfer_type',
-                 'transfer_id.warehouse_from_id', 'transfer_id.employee_from_id')
-    def _compute_batch_info(self):
-        """Показує інформацію про партії, які будуть використані"""
-        for line in self:
-            if not line.nomenclature_id or not line.qty or not line.transfer_id:
-                line.batch_info = ''
-                continue
-                
-            Balance = self.env['stock.balance']
-            transfer = line.transfer_id
-            
-            # Отримуємо FIFO партії
-            if transfer.transfer_type in ['warehouse', 'warehouse_employee']:
-                if not transfer.warehouse_from_id:
-                    line.batch_info = 'Не вказано склад відправник'
-                    continue
-                    
-                fifo_balances, remaining_qty = Balance.get_fifo_balances(
-                    nomenclature_id=line.nomenclature_id.id,
-                    required_qty=line.qty,
-                    location_type='warehouse',
-                    warehouse_id=transfer.warehouse_from_id.id,
-                    company_id=transfer.company_id.id
-                )
-            elif transfer.transfer_type in ['employee', 'employee_warehouse']:
-                if not transfer.employee_from_id:
-                    line.batch_info = 'Не вказано працівника відправника'
-                    continue
-                    
-                fifo_balances, remaining_qty = Balance.get_fifo_balances(
-                    nomenclature_id=line.nomenclature_id.id,
-                    required_qty=line.qty,
-                    location_type='employee',
-                    employee_id=transfer.employee_from_id.id,
-                    company_id=transfer.company_id.id
-                )
-            else:
-                line.batch_info = 'Невідомий тип переміщення'
-                continue
-            
-            # Формуємо текст з інформацією про партії
-            batch_lines = []
-            for fifo_item in fifo_balances:
-                balance = fifo_item['balance']
-                qty = fifo_item['qty']
-                
-                if balance.batch_id:
-                    batch_lines.append(f"Партія {balance.batch_id.batch_number}: {qty} {balance.uom_id.name}")
-                else:
-                    batch_lines.append(f"Без партії: {qty} {balance.uom_id.name}")
-            
-            if remaining_qty > 0:
-                batch_lines.append(f"⚠️ Недостатньо: {remaining_qty} {line.selected_uom_id.name or ''}")
-            
-            line.batch_info = '\n'.join(batch_lines) if batch_lines else 'Немає доступних партій'
+            line.amount_no_vat = line.qty * line.price_unit_no_vat
+            line.vat_amount = line.amount_no_vat * line.vat_rate / 100
+            line.amount_with_vat = line.amount_no_vat + line.vat_amount
 
     @api.onchange('nomenclature_id')
     def _onchange_nomenclature_id(self):
-        """При зміні номенклатури встановлюємо одиницю виміру"""
         if self.nomenclature_id:
-            # Знаходимо основну одиницю виміру
-            if hasattr(self.nomenclature_id, 'uom_line_ids'):
-                default_uom = self.nomenclature_id.uom_line_ids.filtered('is_default')
-                if default_uom:
-                    self.selected_uom_id = default_uom[0].uom_id
-                elif self.nomenclature_id.uom_line_ids:
-                    self.selected_uom_id = self.nomenclature_id.uom_line_ids[0].uom_id
-
-    @api.constrains('qty', 'nomenclature_id')
-    def _check_qty_availability(self):
-        """Перевіряє доступність товару при зміні кількості"""
-        for line in self:
-            if line.qty > 0 and line.available_qty < line.qty:
-                raise ValidationError(
-                    f'Недостатньо товару "{line.nomenclature_id.name}". '
-                    f'Доступно: {line.available_qty}, потрібно: {line.qty}'
-                )
+            # Встановлюємо одиницю виміру
+            if hasattr(self.nomenclature_id, 'base_uom_id'):
+                self.selected_uom_id = self.nomenclature_id.base_uom_id
+            
+            # Встановлюємо ціну якщо є
+            if hasattr(self.nomenclature_id, 'price_usd'):
+                self.price_unit_no_vat = self.nomenclature_id.price_usd

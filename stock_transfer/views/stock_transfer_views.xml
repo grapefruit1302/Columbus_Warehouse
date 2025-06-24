@@ -1,7 +1,7 @@
-<!-- stock_transfer/views/stock_transfer_views.xml -->
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Форма переміщення -->
+        <!-- Form View для переміщень -->
         <record id="view_stock_transfer_form" model="ir.ui.view">
             <field name="name">stock.transfer.form</field>
             <field name="model">stock.transfer</field>
@@ -64,47 +64,51 @@
                         <notebook>
                             <page string="Позиції переміщення">
                                 <field name="line_ids" readonly="state in ('done', 'cancelled')">
-                                    <tree string="Позиції" editable="bottom">
-                                        <field name="available_nomenclature_ids" column_invisible="1"/>
+                                    <list string="Позиції товарів" editable="bottom">
                                         <field name="nomenclature_id" required="1" 
-                                               options="{'no_create': True, 'no_edit': True}"/>
-                                        <field name="selected_uom_id" string="Од. вим." required="1"/>
-                                        <field name="available_qty" string="Доступно" readonly="1"/>
-                                        <field name="qty" required="1" string="Кількість"/>
-                                        <field name="batch_info" string="Партії (FIFO)" widget="text" readonly="1"/>
-                                    </tree>
+                                               options="{'no_create': True}"/>
+                                        
+                                        <field name="lot_batch" string="Партія"/>
+                                        
+                                        <field name="selected_uom_id" required="1" 
+                                               options="{'no_create': True}"/>
+                                        
+                                        <field name="qty" required="1"/>
+                                        
+                                        <field name="price_unit_no_vat" string="Ціна без ПДВ"/>
+                                        
+                                        <field name="amount_no_vat" readonly="1" string="Сума без ПДВ"/>
+                                    </list>
                                 </field>
                             </page>
+                            
                             <page string="Додаткова інформація">
                                 <group>
-                                    <field name="notes" placeholder="Додаткові примітки до переміщення..."/>
+                                    <field name="notes" placeholder="Введіть примітки..."/>
+                                    <field name="no_vat" string="Без ПДВ"/>
                                 </group>
                             </page>
                         </notebook>
                     </sheet>
                     
-                    <div class="oe_chatter">
-                        <field name="message_follower_ids"/>
-                        <field name="activity_ids"/>
-                        <field name="message_ids"/>
-                    </div>
+                    <chatter/>
                 </form>
             </field>
         </record>
 
-        <!-- Список переміщень -->
+        <!-- List View для переміщень -->
         <record id="view_stock_transfer_list" model="ir.ui.view">
             <field name="name">stock.transfer.list</field>
             <field name="model">stock.transfer</field>
             <field name="arch" type="xml">
-                <list string="Переміщення товарів">
+                <list string="Переміщення товарів" default_order="date desc, number desc">
                     <field name="number"/>
                     <field name="date"/>
                     <field name="transfer_type"/>
                     <field name="warehouse_from_id" optional="show"/>
                     <field name="warehouse_to_id" optional="show"/>
-                    <field name="employee_from_id" optional="hide"/>
-                    <field name="employee_to_id" optional="hide"/>
+                    <field name="employee_from_id" optional="show"/>
+                    <field name="employee_to_id" optional="show"/>
                     <field name="state" decoration-success="state == 'done'" 
                            decoration-info="state == 'confirmed'" 
                            decoration-muted="state == 'cancelled'"/>
@@ -113,13 +117,14 @@
             </field>
         </record>
 
-        <!-- Пошук -->
+        <!-- Search View для переміщень -->
         <record id="view_stock_transfer_search" model="ir.ui.view">
             <field name="name">stock.transfer.search</field>
             <field name="model">stock.transfer</field>
             <field name="arch" type="xml">
                 <search string="Пошук переміщень">
                     <field name="number"/>
+                    <field name="date"/>
                     <field name="warehouse_from_id"/>
                     <field name="warehouse_to_id"/>
                     <field name="employee_from_id"/>
@@ -132,8 +137,8 @@
                     <filter string="Скасовані" name="cancelled" domain="[('state','=','cancelled')]"/>
                     
                     <separator/>
-                    <filter string="Між складами" name="warehouse" domain="[('transfer_type','=','warehouse')]"/>
-                    <filter string="Між працівниками" name="employee" domain="[('transfer_type','=','employee')]"/>
+                    <filter string="Між складами" name="warehouse_transfer" domain="[('transfer_type','=','warehouse')]"/>
+                    <filter string="Між працівниками" name="employee_transfer" domain="[('transfer_type','=','employee')]"/>
                     <filter string="Зі складу працівнику" name="warehouse_to_employee" domain="[('transfer_type','=','warehouse_employee')]"/>
                     <filter string="Від працівника на склад" name="employee_to_warehouse" domain="[('transfer_type','=','employee_warehouse')]"/>
                     
@@ -166,7 +171,6 @@
                 </p>
                 <p>
                     Тут ви можете створювати документи для переміщення товарів між складами та працівниками.
-                    Система автоматично застосовує FIFO логіку для вибору партій.
                 </p>
             </field>
         </record>
