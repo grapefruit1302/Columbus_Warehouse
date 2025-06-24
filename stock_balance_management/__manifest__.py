@@ -19,7 +19,8 @@
         'base',
         'stock',
         'custom_nomenclature',
-        'stock_batch_management'
+        'stock_batch_management',
+        'stock_transfer'  # Додаємо залежність від модуля переміщень
     ],
     'data': [
         'security/ir.model.access.csv',
