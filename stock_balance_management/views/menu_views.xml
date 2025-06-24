@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Menu -->
+    <menuitem id="menu_stock_balance_management" 
+              name="Залишки" 
+              parent="stock.menu_stock_root" 
+              sequence="25"/>
+    
+    <!-- Balance Menu -->
+    <menuitem id="menu_stock_balance" 
+              name="Залишки товарів" 
+              parent="menu_stock_balance_management" 
+              action="action_stock_balance" 
+              sequence="10"/>
+    
+    <!-- Balance Movements Menu -->
+    <menuitem id="menu_stock_balance_movement" 
+              name="Рухи залишків" 
+              parent="menu_stock_balance_management" 
+              action="action_stock_balance_movement" 
+              sequence="20"/>
+
+    <!-- Analysis Submenu -->
+    <menuitem id="menu_stock_balance_analysis_submenu" 
+              name="Аналіз" 
+              parent="menu_stock_balance_management" 
+              sequence="30"/>
+
+    <!-- Analysis Menu Items -->
+    <menuitem id="menu_stock_balance_analysis" 
+              name="Аналіз залишків" 
+              parent="menu_stock_balance_analysis_submenu" 
+              action="action_stock_balance_analysis" 
+              sequence="10"/>
+
+    <menuitem id="menu_stock_balance_movement_analysis" 
+              name="Аналіз рухів" 
+              parent="menu_stock_balance_analysis_submenu" 
+              action="action_stock_balance_movement_analysis" 
+              sequence="20"/>
+
+    <!-- Tools Submenu -->
+    <menuitem id="menu_stock_balance_tools_submenu" 
+              name="Інструменти" 
+              parent="menu_stock_balance_management" 
+              sequence="40"/>
+
+    <!-- Tools Menu Items -->
+    <menuitem id="menu_stock_balance_report_wizard" 
+              name="Звіти по залишках" 
+              parent="menu_stock_balance_tools_submenu" 
+              action="action_stock_balance_report_wizard" 
+              sequence="10"/>
+
+    <menuitem id="menu_stock_balance_adjustment_wizard" 
+              name="Коригування залишків" 
+              parent="menu_stock_balance_tools_submenu" 
+              action="action_stock_balance_adjustment_wizard" 
+              sequence="20"/>
+</odoo>

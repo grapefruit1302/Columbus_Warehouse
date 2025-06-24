@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stock Balance Form View -->
+    <record id="stock_balance_form_view" model="ir.ui.view">
+        <field name="name">stock.balance.form</field>
+        <field name="model">stock.balance</field>
+        <field name="arch" type="xml">
+            <form string="Залишок товару" create="false" edit="false">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_movements" type="object" class="oe_stat_button" icon="fa-exchange">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Рухи</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <group>
+                        <group name="product_info">
+                            <field name="nomenclature_id" readonly="1"/>
+                            <field name="uom_id" readonly="1"/>
+                            <field name="batch_id" readonly="1"/>
+                        </group>
+                        <group name="quantities">
+                            <field name="qty_on_hand" readonly="1"/>
+                            <field name="qty_available" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="location_info">
+                            <field name="location_type" readonly="1"/>
+                            <field name="warehouse_id" readonly="1" invisible="location_type != 'warehouse'"/>
+                            <field name="location_id" readonly="1" invisible="location_type != 'warehouse'"/>
+                            <field name="employee_id" readonly="1" invisible="location_type != 'employee'"/>
+                        </group>
+                        <group name="meta_info">
+                            <field name="company_id" readonly="1"/>
+                            <field name="last_update" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Серійні номери" invisible="not serial_numbers">
+                        <field name="serial_numbers" widget="text" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Stock Balance List View -->
+    <record id="stock_balance_list_view" model="ir.ui.view">
+        <field name="name">stock.balance.list</field>
+        <field name="model">stock.balance</field>
+        <field name="arch" type="xml">
+            <list string="Залишки товарів" default_order="nomenclature_id, location_type, warehouse_id, employee_id" create="false" edit="false">
+                <field name="nomenclature_id"/>
+                <field name="location_type" widget="badge" 
+                       decoration-info="location_type == 'warehouse'"
+                       decoration-warning="location_type == 'employee'"/>
+                <field name="warehouse_id" optional="show"/>
+                <field name="employee_id" optional="show"/>
+                <field name="batch_id" optional="hide"/>
+                <field name="qty_on_hand" sum="Всього фізично"/>
+                <field name="qty_available" sum="Всього доступно"/>
+                <field name="uom_id"/>
+                <field name="last_update" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Stock Balance Search View -->
+    <record id="stock_balance_search_view" model="ir.ui.view">
+        <field name="name">stock.balance.search</field>
+        <field name="model">stock.balance</field>
+        <field name="arch" type="xml">
+            <search string="Пошук залишків">
+                <field name="nomenclature_id"/>
+                <field name="warehouse_id"/>
+                <field name="employee_id"/>
+                <field name="batch_id"/>
+                
+                <filter string="Склади" name="warehouse_locations" domain="[('location_type', '=', 'warehouse')]"/>
+                <filter string="Працівники" name="employee_locations" domain="[('location_type', '=', 'employee')]"/>
+                
+                <separator/>
+                <filter string="З наявністю" name="with_qty" domain="[('qty_available', '>', 0)]"/>
+                <filter string="Нульові залишки" name="zero_qty" domain="[('qty_available', '=', 0)]"/>
+                <filter string="З партіями" name="with_batches" domain="[('batch_id', '!=', False)]"/>
+                
+                <separator/>
+                <filter string="Сьогодні оновлені" name="updated_today" 
+                        domain="[('last_update', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                
+                <group expand="0" string="Групування">
+                    <filter string="Номенклатура" name="group_nomenclature" context="{'group_by': 'nomenclature_id'}"/>
+                    <filter string="Тип локації" name="group_location_type" context="{'group_by': 'location_type'}"/>
+                    <filter string="Склад" name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter string="Працівник" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Партія" name="group_batch" context="{'group_by': 'batch_id'}"/>
+                    <filter string="Компанія" name="group_company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Stock Balance Pivot View -->
+    <record id="stock_balance_pivot_view" model="ir.ui.view">
+        <field name="name">stock.balance.pivot</field>
+        <field name="model">stock.balance</field>
+        <field name="arch" type="xml">
+            <pivot string="Аналіз залишків">
+                <field name="nomenclature_id" type="row"/>
+                <field name="location_type" type="col"/>
+                <field name="qty_on_hand" type="measure"/>
+                <field name="qty_available" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Stock Balance Graph View -->
+    <record id="stock_balance_graph_view" model="ir.ui.view">
+        <field name="name">stock.balance.graph</field>
+        <field name="model">stock.balance</field>
+        <field name="arch" type="xml">
+            <graph string="Аналіз залишків" type="bar">
+                <field name="nomenclature_id"/>
+                <field name="qty_available" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Stock Balance Movement Form View -->
+    <record id="stock_balance_movement_form_view" model="ir.ui.view">
+        <field name="name">stock.balance.movement.form</field>
+        <field name="model">stock.balance.movement</field>
+        <field name="arch" type="xml">
+            <form string="Рух залишків" create="false" edit="false">
+                <sheet>
+                    <group>
+                        <group name="main_info">
+                            <field name="nomenclature_id" readonly="1"/>
+                            <field name="movement_type" readonly="1"/>
+                            <field name="operation_type" readonly="1"/>
+                            <field name="qty" readonly="1"/>
+                            <field name="uom_id" readonly="1"/>
+                        </group>
+                        <group name="meta_info">
+                            <field name="date" readonly="1"/>
+                            <field name="document_reference" readonly="1"/>
+                            <field name="user_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Локації">
+                        <group name="location_from" string="Звідки">
+                            <field name="location_from_type" readonly="1"/>
+                            <field name="warehouse_from_id" readonly="1" invisible="location_from_type != 'warehouse'"/>
+                            <field name="employee_from_id" readonly="1" invisible="location_from_type != 'employee'"/>
+                            <field name="location_from_id" readonly="1" invisible="location_from_type != 'warehouse'"/>
+                        </group>
+                        <group name="location_to" string="Куди">
+                            <field name="location_to_type" readonly="1"/>
+                            <field name="warehouse_to_id" readonly="1" invisible="location_to_type != 'warehouse'"/>
+                            <field name="employee_to_id" readonly="1" invisible="location_to_type != 'employee'"/>
+                            <field name="location_to_id" readonly="1" invisible="location_to_type != 'warehouse'"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Додаткова інформація">
+                        <field name="batch_id" readonly="1"/>
+                        <field name="notes" widget="text" readonly="1"/>
+                        <field name="serial_numbers" widget="text" readonly="1" invisible="not serial_numbers"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Stock Balance Movement List View -->
+    <record id="stock_balance_movement_list_view" model="ir.ui.view">
+        <field name="name">stock.balance.movement.list</field>
+        <field name="model">stock.balance.movement</field>
+        <field name="arch" type="xml">
+            <list string="Рухи залишків" default_order="date desc" create="false" edit="false">
+                <field name="date"/>
+                <field name="nomenclature_id"/>
+                <field name="movement_type" widget="badge" 
+                       decoration-success="movement_type == 'in'"
+                       decoration-danger="movement_type == 'out'"
+                       decoration-info="movement_type in ['transfer_in', 'transfer_out']"
+                       decoration-warning="movement_type == 'adjustment'"/>
+                <field name="operation_type"/>
+                <field name="qty"/>
+                <field name="uom_id"/>
+                <field name="warehouse_from_id" string="Склад (з)" optional="hide"/>
+                <field name="warehouse_to_id" string="Склад (в)" optional="hide"/>
+                <field name="employee_from_id" string="Працівник (з)" optional="hide"/>
+                <field name="employee_to_id" string="Працівник (в)" optional="hide"/>
+                <field name="document_reference" optional="show"/>
+                <field name="batch_id" optional="hide"/>
+                <field name="user_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Stock Balance Movement Search View -->
+    <record id="stock_balance_movement_search_view" model="ir.ui.view">
+        <field name="name">stock.balance.movement.search</field>
+        <field name="model">stock.balance.movement</field>
+        <field name="arch" type="xml">
+            <search string="Пошук рухів залишків">
+                <field name="nomenclature_id"/>
+                <field name="document_reference"/>
+                <field name="warehouse_from_id"/>
+                <field name="warehouse_to_id"/>
+                <field name="employee_from_id"/>
+                <field name="employee_to_id"/>
+                
+                <filter string="Надходження" name="movements_in" domain="[('movement_type', '=', 'in')]"/>
+                <filter string="Списання" name="movements_out" domain="[('movement_type', '=', 'out')]"/>
+                <filter string="Переміщення (в)" name="movements_transfer_in" domain="[('movement_type', '=', 'transfer_in')]"/>
+                <filter string="Переміщення (з)" name="movements_transfer_out" domain="[('movement_type', '=', 'transfer_out')]"/>
+                <filter string="Коригування" name="movements_adjustment" domain="[('movement_type', '=', 'adjustment')]"/>
+                
+                <separator/>
+                <filter string="Прихідні" name="receipts" domain="[('operation_type', '=', 'receipt')]"/>
+                <filter string="Переміщення" name="transfers" domain="[('operation_type', '=', 'transfer')]"/>
+                <filter string="Коригування" name="adjustments" domain="[('operation_type', '=', 'adjustment')]"/>
+                
+                <separator/>
+                <filter string="Сьогодні" name="today" domain="[('date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('date', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
+                <filter string="Цей тиждень" name="this_week" domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                <filter string="Цей місяць" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%Y-%m-01'))]"/>
+                
+                <group expand="0" string="Групування">
+                    <filter string="Номенклатура" name="group_nomenclature" context="{'group_by': 'nomenclature_id'}"/>
+                    <filter string="Тип руху" name="group_movement_type" context="{'group_by': 'movement_type'}"/>
+                    <filter string="Тип операції" name="group_operation_type" context="{'group_by': 'operation_type'}"/>
+                    <filter string="Дата" name="group_date" context="{'group_by': 'date'}"/>
+                    <filter string="Документ" name="group_document" context="{'group_by': 'document_reference'}"/>
+                    <filter string="Користувач" name="group_user" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Actions -->
+    <record id="action_stock_balance" model="ir.actions.act_window">
+        <field name="name">Залишки товарів</field>
+        <field name="res_model">stock.balance</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="search_view_id" ref="stock_balance_search_view"/>
+        <field name="context">{'search_default_with_qty': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Тут відображаються залишки товарів!
+            </p>
+            <p>
+                Залишки автоматично оновлюються при проведенні документів приходу та переміщень.
+                Ви можете переглянути залишки на складах та у працівників.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_stock_balance_movement" model="ir.actions.act_window">
+        <field name="name">Рухи залишків</field>
+        <field name="res_model">stock.balance.movement</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="stock_balance_movement_search_view"/>
+        <field name="context">{'search_default_this_month': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Рухи залишків відображають всі операції!
+            </p>
+            <p>
+                Тут ви можете переглянути історію всіх рухів залишків:
+                надходження, списання, переміщення та коригування.
+            </p>
+        </field>
+    </record>
+
+    <!-- Analysis Actions -->
+    <record id="action_stock_balance_analysis" model="ir.actions.act_window">
+        <field name="name">Аналіз залишків</field>
+        <field name="res_model">stock.balance</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="context">{'search_default_with_qty': 1}</field>
+    </record>
+
+    <record id="action_stock_balance_movement_analysis" model="ir.actions.act_window">
+        <field name="name">Аналіз рухів залишків</field>
+        <field name="res_model">stock.balance.movement</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="context">{'search_default_this_month': 1}</field>
+    </record>
+</odoo>

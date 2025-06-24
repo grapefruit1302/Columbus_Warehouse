@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Placeholder для майбутніх звітів -->
+    <data>
+        <!-- Тут будуть QWeb звіти по залишках -->
+    </data>
+</odoo>

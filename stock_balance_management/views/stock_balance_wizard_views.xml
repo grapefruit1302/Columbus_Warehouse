@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stock Balance Report Wizard Form View -->
+    <record id="stock_balance_report_wizard_form_view" model="ir.ui.view">
+        <field name="name">stock.balance.report.wizard.form</field>
+        <field name="model">stock.balance.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Звіт по залишках">
+                <sheet>
+                    <group>
+                        <group name="report_type">
+                            <field name="report_type" widget="radio"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="period">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group name="company">
+                            <field name="company_id"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="warehouses">
+                            <field name="warehouse_ids" widget="many2many_tags" 
+                                   placeholder="Всі склади"
+                                   domain="[('company_id', '=', company_id)]"/>
+                        </group>
+                        <group name="employees">
+                            <field name="employee_ids" widget="many2many_tags" 
+                                   placeholder="Всі працівники"
+                                   domain="[('company_id', '=', company_id)]"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="products">
+                            <field name="category_ids" widget="many2many_tags" 
+                                   placeholder="Всі категорії"/>
+                            <field name="nomenclature_ids" widget="many2many_tags" 
+                                   placeholder="Вся номенклатура"/>
+                        </group>
+                        <group name="options">
+                            <field name="show_zero_qty"/>
+                            <field name="show_movements"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Створити звіт" name="action_generate_report" type="object" 
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Stock Balance Adjustment Wizard Form View -->
+    <record id="stock_balance_adjustment_wizard_form_view" model="ir.ui.view">
+        <field name="name">stock.balance.adjustment.wizard.form</field>
+        <field name="model">stock.balance.adjustment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Коригування залишків">
+                <sheet>
+                    <group>
+                        <group name="product_info">
+                            <field name="nomenclature_id" required="1"/>
+                            <field name="batch_id" domain="[('nomenclature_id', '=', nomenclature_id)]"/>
+                        </group>
+                        <group name="location_info">
+                            <field name="location_type" required="1"/>
+                            <field name="warehouse_id" 
+                                   invisible="location_type != 'warehouse'"
+                                   required="location_type == 'warehouse'"/>
+                            <field name="employee_id" 
+                                   invisible="location_type != 'employee'"
+                                   required="location_type == 'employee'"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="quantities">
+                            <field name="current_qty" readonly="1"/>
+                            <field name="new_qty" required="1"/>
+                            <field name="adjustment_qty" readonly="1" 
+                                   decoration-success="adjustment_qty > 0"
+                                   decoration-danger="adjustment_qty &lt; 0"/>
+                        </group>
+                        <group name="reason">
+                            <field name="reason" required="1" widget="text"/>
+                        </group>
+                    </group>
+                    
+                    <div class="alert alert-info" role="alert" invisible="adjustment_qty == 0">
+                        <i class="fa fa-info-circle"/> 
+                        <span invisible="adjustment_qty &lt;= 0">Буде додано <field name="adjustment_qty" readonly="1"/> одиниць товару.</span>
+                        <span invisible="adjustment_qty &gt;= 0">Буде списано <field name="adjustment_qty" readonly="1"/> одиниць товару.</span>
+                    </div>
+                </sheet>
+                <footer>
+                    <button string="Застосувати коригування" name="action_apply_adjustment" type="object" 
+                            class="btn-primary" invisible="adjustment_qty == 0"/>
+                    <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Actions for Wizards -->
+    <record id="action_stock_balance_report_wizard" model="ir.actions.act_window">
+        <field name="name">Створити звіт по залишках</field>
+        <field name="res_model">stock.balance.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="stock_balance_report_wizard_form_view"/>
+    </record>
+
+    <record id="action_stock_balance_adjustment_wizard" model="ir.actions.act_window">
+        <field name="name">Коригування залишків</field>
+        <field name="res_model">stock.balance.adjustment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="stock_balance_adjustment_wizard_form_view"/>
+    </record>
+</odoo>

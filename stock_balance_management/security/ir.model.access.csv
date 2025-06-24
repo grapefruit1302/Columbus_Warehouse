@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stock_balance_user,stock.balance.user,model_stock_balance,stock.group_stock_user,1,1,1,0
+access_stock_balance_manager,stock.balance.manager,model_stock_balance,stock.group_stock_manager,1,1,1,1
+access_stock_balance_movement_user,stock.balance.movement.user,model_stock_balance_movement,stock.group_stock_user,1,0,0,0
+access_stock_balance_movement_manager,stock.balance.movement.manager,model_stock_balance_movement,stock.group_stock_manager,1,1,1,1
+access_stock_balance_report_wizard_user,stock.balance.report.wizard.user,model_stock_balance_report_wizard,stock.group_stock_user,1,1,1,1
+access_stock_balance_adjustment_wizard_user,stock.balance.adjustment.wizard.user,model_stock_balance_adjustment_wizard,stock.group_stock_user,1,1,1,1
