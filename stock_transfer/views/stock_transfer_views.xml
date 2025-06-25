@@ -8,15 +8,25 @@
             <field name="arch" type="xml">
                 <form string="Переміщення товарів">
                     <header>
-                        <button name="action_confirm" type="object" string="Підтвердити" 
+                        <button name="action_confirm" string="Підтвердити" type="object" 
                                 class="oe_highlight" invisible="state != 'draft'"/>
-                        <button name="action_done" type="object" string="Виконати" 
+                        <button name="action_done" string="Провести" type="object" 
                                 class="oe_highlight" invisible="state != 'confirmed'"/>
-                        <button name="action_cancel" type="object" string="Скасувати"
-                                invisible="state in ('done', 'cancelled')"/>
-                        <button name="action_draft" type="object" string="В чернетку"
+                        <button name="action_cancel" string="Скасувати" type="object" 
+                                invisible="state in ['done', 'cancelled']"/>
+                        <button name="action_draft" string="Чернетка" type="object" 
                                 invisible="state != 'cancelled'"/>
-                        <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
+                        
+                        <!-- Кнопки для дебагу -->
+                        <button name="action_debug_balances" string="🔍 Перевірити залишки" 
+                                type="object" class="btn-info"
+                                invisible="state != 'draft'"/>
+                        <button name="action_test_available_products" string="🧪 Тест товарів" 
+                                type="object" class="btn-warning"
+                                invisible="state != 'draft'"/>
+                        
+                        <field name="state" widget="statusbar" 
+                               statusbar_visible="draft,confirmed,done"/>
                     </header>
                     
                     <sheet>
@@ -28,56 +38,69 @@
                         
                         <group>
                             <group>
-                                <field name="date" readonly="state in ('done', 'cancelled')"/>
-                                <field name="transfer_type" readonly="state in ('done', 'cancelled')"/>
-                                <field name="company_id" readonly="state in ('done', 'cancelled')"/>
+                                <field name="date" required="1" readonly="state in ['done', 'cancelled']"/>
+                                <field name="transfer_type" required="1" 
+                                       readonly="state in ['done', 'cancelled']"/>
+                                <field name="company_id" groups="base.group_multi_company" 
+                                       readonly="state in ['done', 'cancelled']"/>
                             </group>
                             <group>
-                                <field name="posting_datetime" readonly="1" invisible="state != 'done'"/>
-                            </group>
-                        </group>
-                        
-                        <!-- Поля відправник/одержувач залежно від типу -->
-                        <group string="Відправник та одержувач">
-                            <group>
-                                <field name="warehouse_from_id" string="Склад відправник"
-                                       invisible="transfer_type not in ('warehouse', 'warehouse_employee')"
-                                       required="transfer_type in ('warehouse', 'warehouse_employee')"
-                                       readonly="state in ('done', 'cancelled')"/>
-                                <field name="employee_from_id" string="Працівник відправник"
-                                       invisible="transfer_type not in ('employee', 'employee_warehouse')"
-                                       required="transfer_type in ('employee', 'employee_warehouse')"
-                                       readonly="state in ('done', 'cancelled')"/>
-                            </group>
-                            <group>
-                                <field name="warehouse_to_id" string="Склад одержувач"
-                                       invisible="transfer_type not in ('warehouse', 'employee_warehouse')"
-                                       required="transfer_type in ('warehouse', 'employee_warehouse')"
-                                       readonly="state in ('done', 'cancelled')"/>
-                                <field name="employee_to_id" string="Працівник одержувач"
-                                       invisible="transfer_type not in ('employee', 'warehouse_employee')"
-                                       required="transfer_type in ('employee', 'warehouse_employee')"
-                                       readonly="state in ('done', 'cancelled')"/>
+                                <field name="warehouse_from_id" 
+                                       invisible="transfer_type in ['employee', 'employee_warehouse']"
+                                       required="transfer_type in ['warehouse', 'warehouse_employee']"
+                                       readonly="state in ['done', 'cancelled']"
+                                       options="{'no_create': True}"/>
+                                <field name="warehouse_to_id" 
+                                       invisible="transfer_type in ['employee', 'employee_warehouse']"
+                                       required="transfer_type in ['warehouse', 'employee_warehouse']"
+                                       readonly="state in ['done', 'cancelled']"
+                                       options="{'no_create': True}"/>
+                                <field name="employee_from_id" 
+                                       invisible="transfer_type in ['warehouse', 'warehouse_employee']"
+                                       required="transfer_type in ['employee', 'employee_warehouse']"
+                                       readonly="state in ['done', 'cancelled']"
+                                       options="{'no_create': True}"/>
+                                <field name="employee_to_id" 
+                                       invisible="transfer_type in ['warehouse', 'employee_warehouse']"
+                                       required="transfer_type in ['employee', 'warehouse_employee']"
+                                       readonly="state in ['done', 'cancelled']"
+                                       options="{'no_create': True}"/>
+                                <field name="posting_datetime" readonly="1" invisible="not posting_datetime"/>
                             </group>
                         </group>
                         
                         <notebook>
                             <page string="Позиції переміщення">
-                                <field name="line_ids" readonly="state in ('done', 'cancelled')">
-                                    <list string="Позиції товарів" editable="bottom">
-                                        <field name="nomenclature_id" required="1" 
-                                               options="{'no_create': True}"/>
+                                <field name="line_ids" readonly="state in ['done', 'cancelled']">
+                                    <list string="Позиції переміщення" editable="bottom">
+                                        <!-- Приховане поле для домену -->
+                                        <field name="available_nomenclature_ids" column_invisible="1"/>
+                                        
+                                        <field name="nomenclature_id" 
+                                               string="Товар"
+                                               required="1"
+                                               domain="[('id', 'in', available_nomenclature_ids)]"
+                                               options="{'no_create': True, 'no_open': True}"/>
                                         
                                         <field name="lot_batch" string="Партія"/>
                                         
-                                        <field name="selected_uom_id" required="1" 
+                                        <field name="selected_uom_id" 
+                                               string="Од. виміру"
+                                               required="1" 
                                                options="{'no_create': True}"/>
                                         
-                                        <field name="qty" required="1"/>
+                                        <field name="qty" 
+                                               string="Кількість"
+                                               required="1"/>
                                         
-                                        <field name="price_unit_no_vat" string="Ціна без ПДВ"/>
+                                        <field name="price_unit_no_vat" 
+                                               string="Ціна без ПДВ"
+                                               optional="hide"/>
                                         
-                                        <field name="amount_no_vat" readonly="1" string="Сума без ПДВ"/>
+                                        <field name="amount_no_vat" 
+                                               string="Сума без ПДВ"
+                                               readonly="1"
+                                               optional="hide"/>
                                     </list>
                                 </field>
                             </page>
@@ -85,7 +108,6 @@
                             <page string="Додаткова інформація">
                                 <group>
                                     <field name="notes" placeholder="Введіть примітки..."/>
-                                    <field name="no_vat" string="Без ПДВ"/>
                                 </group>
                             </page>
                         </notebook>
@@ -109,9 +131,11 @@
                     <field name="warehouse_to_id" optional="show"/>
                     <field name="employee_from_id" optional="show"/>
                     <field name="employee_to_id" optional="show"/>
-                    <field name="state" decoration-success="state == 'done'" 
+                    <field name="state" 
+                           decoration-success="state == 'done'" 
                            decoration-info="state == 'confirmed'" 
-                           decoration-muted="state == 'cancelled'"/>
+                           decoration-muted="state == 'cancelled'"
+                           widget="badge"/>
                     <field name="posting_datetime" optional="hide"/>
                 </list>
             </field>

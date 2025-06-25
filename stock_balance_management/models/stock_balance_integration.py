@@ -1,122 +1,69 @@
+# stock_balance_management/models/stock_balance_integration.py
+
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import ValidationError, UserError
 import logging
 
 _logger = logging.getLogger(__name__)
 
-class StockReceiptIncoming(models.Model):
-    """Інтеграція з прихідними накладними"""
-    _inherit = 'stock.receipt.incoming'
 
-    def _do_posting(self, posting_time, custom_datetime=None):
-        """Розширюємо метод проведення для оновлення залишків"""
-        result = super()._do_posting(posting_time, custom_datetime)
-        
-        # Оновлюємо залишки для кожної позиції
-        for line in self.line_ids:
-            self._create_balance_movement_for_line(line)
-        
-        return result
+class StockTransferLine(models.Model):
+    """Розширюємо позиції переміщень"""
+    _inherit = 'stock.transfer.line'
 
-    def _create_balance_movement_for_line(self, line):
-        """Створює рух залишків для позиції накладної"""
-        if line.qty <= 0:
-            return
-        
-        # Отримуємо локацію (якщо не вказана, використовуємо основну локацію складу)
-        location = line.location_id or self.warehouse_id.lot_stock_id
-        
-        # Отримуємо партію для цієї позиції
-        batch = None
-        if hasattr(line.nomenclature_id, 'tracking_serial') and line.nomenclature_id.tracking_serial:
-            # Знаходимо партію, створену для цієї позиції
-            batch = self.env['stock.batch'].search([
-                ('source_document_type', '=', 'receipt'),
-                ('source_document_number', '=', self.number),
-                ('nomenclature_id', '=', line.nomenclature_id.id)
-            ], limit=1)
-        
-        try:
-            # Створюємо рух залишків
-            self.env['stock.balance.movement'].create_movement(
-                nomenclature_id=line.nomenclature_id.id,
-                qty=line.qty,
-                movement_type='in',
-                operation_type='receipt',
-                location_to_type='warehouse',
-                warehouse_to_id=self.warehouse_id.id,
-                location_to_id=location.id,
-                batch_id=batch.id if batch else None,
-                uom_id=line.selected_uom_id.id or line.product_uom_id.id,
-                document_reference=self.number,
-                notes=f'Прихідна накладна {self.number}',
-                serial_numbers=line.serial_numbers if line.tracking_serial else None,
-                company_id=self.company_id.id,
-                date=self.posting_datetime,
-            )
+    available_qty = fields.Float(
+        'Доступна кількість',
+        compute='_compute_available_qty',
+        help='Доступна кількість в локації відправника'
+    )
+
+    @api.depends('nomenclature_id', 'transfer_id.transfer_type', 
+                 'transfer_id.warehouse_from_id', 'transfer_id.employee_from_id')
+    def _compute_available_qty(self):
+        for line in self:
+            if not line.nomenclature_id or not line.transfer_id:
+                line.available_qty = 0.0
+                continue
             
-        except Exception as e:
-            _logger.error(f"Помилка створення руху залишків для {line.nomenclature_id.name}: {e}")
-            self.message_post(
-                body=_('Помилка оновлення залишків для %s: %s') % (line.nomenclature_id.name, str(e)),
-                message_type='notification'
-            )
-
-
-class StockReceiptDisposal(models.Model):
-    """Інтеграція з актами оприходування"""
-    _inherit = 'stock.receipt.disposal'
-
-    def _do_posting(self, posting_time, custom_datetime=None):
-        """Розширюємо метод проведення для оновлення залишків"""
-        result = super()._do_posting(posting_time, custom_datetime)
-        
-        # Оновлюємо залишки для кожної позиції
-        for line in self.line_ids:
-            self._create_balance_movement_for_line(line)
-        
-        return result
-
-    def _create_balance_movement_for_line(self, line):
-        """Створює рух залишків для позиції акта"""
-        if line.qty <= 0:
-            return
-        
-        # Отримуємо локацію (якщо не вказана, використовуємо основну локацію складу)
-        location = line.location_id or self.warehouse_id.lot_stock_id
-        
-        # Знаходимо партію для цієї позиції
-        batch = self.env['stock.batch'].search([
-            ('source_document_type', '=', 'inventory'),
-            ('source_document_number', '=', self.number),
-            ('nomenclature_id', '=', line.nomenclature_id.id)
-        ], limit=1)
-        
-        try:
-            # Створюємо рух залишків
-            self.env['stock.balance.movement'].create_movement(
-                nomenclature_id=line.nomenclature_id.id,
-                qty=line.qty,
-                movement_type='in',
-                operation_type='disposal',
-                location_to_type='warehouse',
-                warehouse_to_id=self.warehouse_id.id,
-                location_to_id=location.id,
-                batch_id=batch.id if batch else None,
-                uom_id=line.selected_uom_id.id or line.product_uom_id.id,
-                document_reference=self.number,
-                notes=f'Акт оприходування {self.number}',
-                serial_numbers=line.serial_numbers if line.tracking_serial else None,
-                company_id=self.company_id.id,
-                date=self.posting_datetime,
-            )
+            Balance = self.env['stock.balance']
+            transfer = line.transfer_id
             
-        except Exception as e:
-            _logger.error(f"Помилка створення руху залишків для {line.nomenclature_id.name}: {e}")
-            self.message_post(
-                body=_('Помилка оновлення залишків для %s: %s') % (line.nomenclature_id.name, str(e)),
-                message_type='notification'
-            )
+            if transfer.transfer_type in ['warehouse', 'warehouse_employee']:
+                if transfer.warehouse_from_id:
+                    line.available_qty = Balance.get_available_qty(
+                        nomenclature_id=line.nomenclature_id.id,
+                        location_type='warehouse',
+                        warehouse_id=transfer.warehouse_from_id.id,
+                        company_id=transfer.company_id.id
+                    )
+                else:
+                    line.available_qty = 0.0
+            elif transfer.transfer_type in ['employee', 'employee_warehouse']:
+                if transfer.employee_from_id:
+                    line.available_qty = Balance.get_available_qty(
+                        nomenclature_id=line.nomenclature_id.id,
+                        location_type='employee',
+                        employee_id=transfer.employee_from_id.id,
+                        company_id=transfer.company_id.id
+                    )
+                else:
+                    line.available_qty = 0.0
+            else:
+                line.available_qty = 0.0
+
+    @api.constrains('qty', 'nomenclature_id')
+    def _check_qty_availability(self):
+        """Перевіряє доступність товару при зміні кількості"""
+        for line in self:
+            if (line.qty > 0 and line.available_qty < line.qty and 
+                line.transfer_id.state != 'draft'):
+                raise ValidationError(
+                    _('Недостатньо товару "%s". Доступно: %s, потрібно: %s') % (
+                        line.nomenclature_id.name,
+                        line.available_qty,
+                        line.qty
+                    )
+                )
 
 
 class StockTransfer(models.Model):
@@ -134,7 +81,14 @@ class StockTransfer(models.Model):
         
         # Створюємо рухи залишків
         for line in self.line_ids:
-            self._create_balance_movements_for_line(line)
+            try:
+                self._create_balance_movements_for_line(line)
+            except Exception as e:
+                _logger.error(f"Помилка створення руху залишків для {line.nomenclature_id.name}: {e}")
+                self.message_post(
+                    body=_('Помилка оновлення залишків для %s: %s') % (line.nomenclature_id.name, str(e)),
+                    message_type='notification'
+                )
         
         return result
 
@@ -327,62 +281,4 @@ class StockTransfer(models.Model):
                     notes=f'Переміщення {self.number}: {self.employee_from_id.name} → {self.warehouse_to_id.name}',
                     company_id=self.company_id.id,
                     date=self.posting_datetime,
-                )
-
-
-class StockTransferLine(models.Model):
-    """Розширюємо позиції переміщень"""
-    _inherit = 'stock.transfer.line'
-
-    available_qty = fields.Float(
-        'Доступна кількість',
-        compute='_compute_available_qty',
-        help='Доступна кількість в локації відправника'
-    )
-
-    @api.depends('nomenclature_id', 'transfer_id.transfer_type', 
-                 'transfer_id.warehouse_from_id', 'transfer_id.employee_from_id')
-    def _compute_available_qty(self):
-        for line in self:
-            if not line.nomenclature_id or not line.transfer_id:
-                line.available_qty = 0.0
-                continue
-            
-            Balance = self.env['stock.balance']
-            transfer = line.transfer_id
-            
-            if transfer.transfer_type in ['warehouse', 'warehouse_employee']:
-                if transfer.warehouse_from_id:
-                    line.available_qty = Balance.get_available_qty(
-                        nomenclature_id=line.nomenclature_id.id,
-                        location_type='warehouse',
-                        warehouse_id=transfer.warehouse_from_id.id,
-                        company_id=transfer.company_id.id
-                    )
-                else:
-                    line.available_qty = 0.0
-            elif transfer.transfer_type in ['employee', 'employee_warehouse']:
-                if transfer.employee_from_id:
-                    line.available_qty = Balance.get_available_qty(
-                        nomenclature_id=line.nomenclature_id.id,
-                        location_type='employee',
-                        employee_id=transfer.employee_from_id.id,
-                        company_id=transfer.company_id.id
-                    )
-                else:
-                    line.available_qty = 0.0
-            else:
-                line.available_qty = 0.0
-
-    @api.constrains('qty', 'nomenclature_id')
-    def _check_qty_availability(self):
-        """Перевіряє доступність товару при зміні кількості"""
-        for line in self:
-            if line.qty > 0 and line.available_qty < line.qty and line.transfer_id.state != 'draft':
-                raise ValidationError(
-                    _('Недостатньо товару "%s". Доступно: %s, потрібно: %s') % (
-                        line.nomenclature_id.name,
-                        line.available_qty,
-                        line.qty
-                    )
                 )
