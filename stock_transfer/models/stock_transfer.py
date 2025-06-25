@@ -179,6 +179,22 @@ class StockTransfer(models.Model):
         
         add_children(company)
         return company_ids
+    
+    @api.depends('nomenclature_id', 'transfer_id.transfer_type', 'transfer_id.warehouse_from_id', 'transfer_id.employee_from_id')
+    def _compute_available_qty_basic(self):
+        """Базове обчислення доступної кількості (якщо немає модуля інтеграції)"""
+        for line in self:
+            if not line.nomenclature_id or not line.transfer_id:
+                line.available_qty = 0.0
+                continue
+            
+            # Якщо є модуль stock_balance_integration, то він перевизначить це поле
+            if 'stock.balance' not in self.env:
+                line.available_qty = 999.0  # Показуємо велику кількість якщо немає модуля залишків
+                continue
+                
+            # Інакше встановлюємо 0 і чекаємо що модуль інтеграції перевизначить
+            line.available_qty = 0.0
 
     def action_test_available_products(self):
         """Тестує обчислення доступних товарів"""
@@ -350,9 +366,11 @@ class StockTransferLine(models.Model):
         string='Доступні товари'
     )
     
-    lot_batch = fields.Char(
-        string='Партія/Лот',
-        help='Партія або лот товару'
+    # Поле для показу доступної кількості
+    available_qty = fields.Float(
+        'Доступна кількість',
+        compute='_compute_available_qty_basic',
+        help='Доступна кількість в локації відправника'
     )
     
     selected_uom_id = fields.Many2one(
@@ -365,34 +383,6 @@ class StockTransferLine(models.Model):
         string='Кількість',
         required=True,
         default=1.0
-    )
-    
-    price_unit_no_vat = fields.Float(
-        string='Ціна без ПДВ',
-        default=0.0
-    )
-    
-    vat_rate = fields.Float(
-        string='Ставка ПДВ',
-        default=20.0
-    )
-    
-    amount_no_vat = fields.Float(
-        string='Сума без ПДВ',
-        compute='_compute_amounts',
-        store=True
-    )
-    
-    vat_amount = fields.Float(
-        string='Сума ПДВ',
-        compute='_compute_amounts',
-        store=True
-    )
-    
-    amount_with_vat = fields.Float(
-        string='Сума з ПДВ',
-        compute='_compute_amounts',
-        store=True
     )
 
     @api.depends('transfer_id.transfer_type', 'transfer_id.warehouse_from_id', 'transfer_id.employee_from_id')
@@ -513,6 +503,66 @@ class StockTransferLine(models.Model):
             if hasattr(self.nomenclature_id, 'base_uom_id'):
                 self.selected_uom_id = self.nomenclature_id.base_uom_id
             
-            # Встановлюємо ціну якщо є
-            if hasattr(self.nomenclature_id, 'price_usd'):
-                self.price_unit_no_vat = self.nomenclature_id.price_usd
+            # Показуємо інформацію про доступну кількість
+            if self.transfer_id and 'stock.balance' in self.env:
+                Balance = self.env['stock.balance']
+                transfer = self.transfer_id
+                company_ids = transfer._get_child_companies(transfer.company_id)
+                
+                if transfer.transfer_type in ['warehouse', 'warehouse_employee'] and transfer.warehouse_from_id:
+                    domain = [
+                        ('nomenclature_id', '=', self.nomenclature_id.id),
+                        ('location_type', '=', 'warehouse'),
+                        ('warehouse_id', '=', transfer.warehouse_from_id.id),
+                        ('company_id', 'in', company_ids),
+                        ('qty_available', '>', 0)
+                    ]
+                    balances = Balance.search(domain)
+                    available_qty = sum(balance.qty_available for balance in balances)
+                    location_name = transfer.warehouse_from_id.name
+                    
+                elif transfer.transfer_type in ['employee', 'employee_warehouse'] and transfer.employee_from_id:
+                    domain = [
+                        ('nomenclature_id', '=', self.nomenclature_id.id),
+                        ('location_type', '=', 'employee'),
+                        ('employee_id', '=', transfer.employee_from_id.id),
+                        ('company_id', 'in', company_ids),
+                        ('qty_available', '>', 0)
+                    ]
+                    balances = Balance.search(domain)
+                    available_qty = sum(balance.qty_available for balance in balances)
+                    location_name = transfer.employee_from_id.name
+                else:
+                    available_qty = 0.0
+                    location_name = 'Невідомо'
+                
+                # Показуємо повідомлення з доступною кількістю
+                if available_qty > 0:
+                    return {
+                        'warning': {
+                            'title': 'Інформація про залишки',
+                            'message': f'Доступно у {location_name}: {available_qty} {self.nomenclature_id.base_uom_id.name if self.nomenclature_id.base_uom_id else "шт."}'
+                        }
+                    }
+                else:
+                    return {
+                        'warning': {
+                            'title': 'Увага!',
+                            'message': f'Товар "{self.nomenclature_id.name}" відсутній у {location_name}!'
+                        }
+                    }
+
+    @api.onchange('qty')
+    def _onchange_qty(self):
+        """Показує попередження при перевищенні доступної кількості"""
+        # Перевіряємо тільки якщо товар вибраний і є доступна кількість
+        if (self.nomenclature_id and self.qty > 0 and 
+            hasattr(self, 'available_qty') and self.available_qty is not None and 
+            self.available_qty < self.qty):
+            return {
+                'warning': {
+                    'title': '⚠️ Перевищення залишків!',
+                    'message': f'Ви ввели {self.qty}, але доступно тільки {self.available_qty}. '
+                             f'Документ не зможе бути проведений з такою кількістю.'
+                }
+            }

@@ -10,7 +10,12 @@
         - Друк документів переміщення
     """,
     'author': 'Петровський Юрій',
-    'depends': ['base', 'stock', 'hr', 'mail'],
+    'depends': [
+        'base', 
+        'stock', 
+        'hr', 
+        'mail'
+    ],
     'data': [
         'security/ir.model.access.csv',
         'views/stock_transfer_views.xml',

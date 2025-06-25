@@ -24,6 +24,14 @@
                         <button name="action_test_available_products" string="🧪 Тест товарів" 
                                 type="object" class="btn-warning"
                                 invisible="state != 'draft'"/>
+                        <button name="action_check_balance_table" string="📊 Статистика" 
+                                type="object" class="btn-success"
+                                invisible="state != 'draft'"/>
+                        
+                        <!-- Кнопка для перегляду рухів партій -->
+                        <button name="action_view_batch_movements" string="📦 Рухи партій" 
+                                type="object" class="btn-primary"
+                                invisible="state == 'draft'"/>
                         
                         <field name="state" widget="statusbar" 
                                statusbar_visible="draft,confirmed,done"/>
@@ -76,31 +84,31 @@
                                         <!-- Приховане поле для домену -->
                                         <field name="available_nomenclature_ids" column_invisible="1"/>
                                         
+                                        <!-- Тільки потрібні поля -->
                                         <field name="nomenclature_id" 
                                                string="Товар"
                                                required="1"
                                                domain="[('id', 'in', available_nomenclature_ids)]"
+                                               context="{'default_company_id': parent.company_id}"
                                                options="{'no_create': True, 'no_open': True}"/>
                                         
-                                        <field name="lot_batch" string="Партія"/>
+                                        <field name="available_qty" 
+                                               string="Доступно" 
+                                               readonly="1" 
+                                               decoration-success="available_qty > 0"
+                                               decoration-muted="available_qty == 0"/>
+                                        
+                                        <field name="qty" 
+                                               string="Кількість"
+                                               required="1"
+                                               decoration-success="qty > 0 and qty &lt;= available_qty"
+                                               decoration-warning="qty > available_qty and available_qty > 0"
+                                               decoration-danger="available_qty == 0 and qty > 0"/>
                                         
                                         <field name="selected_uom_id" 
                                                string="Од. виміру"
                                                required="1" 
                                                options="{'no_create': True}"/>
-                                        
-                                        <field name="qty" 
-                                               string="Кількість"
-                                               required="1"/>
-                                        
-                                        <field name="price_unit_no_vat" 
-                                               string="Ціна без ПДВ"
-                                               optional="hide"/>
-                                        
-                                        <field name="amount_no_vat" 
-                                               string="Сума без ПДВ"
-                                               readonly="1"
-                                               optional="hide"/>
                                     </list>
                                 </field>
                             </page>
@@ -195,6 +203,7 @@
                 </p>
                 <p>
                     Тут ви можете створювати документи для переміщення товарів між складами та працівниками.
+                    Система автоматично показує тільки ті товари, які є в наявності у відправника.
                 </p>
             </field>
         </record>

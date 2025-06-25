@@ -28,24 +28,34 @@ class StockTransferLine(models.Model):
             Balance = self.env['stock.balance']
             transfer = line.transfer_id
             
+            # Отримуємо всі дочірні компанії + головну
+            company_ids = transfer._get_child_companies(transfer.company_id)
+            
+            # Простий пошук залишків з урахуванням дочірніх компаній
             if transfer.transfer_type in ['warehouse', 'warehouse_employee']:
                 if transfer.warehouse_from_id:
-                    line.available_qty = Balance.get_available_qty(
-                        nomenclature_id=line.nomenclature_id.id,
-                        location_type='warehouse',
-                        warehouse_id=transfer.warehouse_from_id.id,
-                        company_id=transfer.company_id.id
-                    )
+                    domain = [
+                        ('nomenclature_id', '=', line.nomenclature_id.id),
+                        ('location_type', '=', 'warehouse'),
+                        ('warehouse_id', '=', transfer.warehouse_from_id.id),
+                        ('company_id', 'in', company_ids),
+                        ('qty_available', '>', 0)
+                    ]
+                    balances = Balance.search(domain)
+                    line.available_qty = sum(balance.qty_available for balance in balances)
                 else:
                     line.available_qty = 0.0
             elif transfer.transfer_type in ['employee', 'employee_warehouse']:
                 if transfer.employee_from_id:
-                    line.available_qty = Balance.get_available_qty(
-                        nomenclature_id=line.nomenclature_id.id,
-                        location_type='employee',
-                        employee_id=transfer.employee_from_id.id,
-                        company_id=transfer.company_id.id
-                    )
+                    domain = [
+                        ('nomenclature_id', '=', line.nomenclature_id.id),
+                        ('location_type', '=', 'employee'),
+                        ('employee_id', '=', transfer.employee_from_id.id),
+                        ('company_id', 'in', company_ids),
+                        ('qty_available', '>', 0)
+                    ]
+                    balances = Balance.search(domain)
+                    line.available_qty = sum(balance.qty_available for balance in balances)
                 else:
                     line.available_qty = 0.0
             else:
@@ -96,38 +106,56 @@ class StockTransfer(models.Model):
         """Перевіряє доступність товару для переміщення"""
         Balance = self.env['stock.balance']
         
-        # Визначаємо локацію відправника
+        # Отримуємо всі дочірні компанії + головну
+        company_ids = self._get_child_companies(self.company_id)
+        
+        # Визначаємо локацію відправника та рахуємо доступну кількість
         if self.transfer_type == 'warehouse':
-            available_qty = Balance.get_available_qty(
-                nomenclature_id=line.nomenclature_id.id,
-                location_type='warehouse',
-                warehouse_id=self.warehouse_from_id.id,
-                company_id=self.company_id.id
-            )
+            domain = [
+                ('nomenclature_id', '=', line.nomenclature_id.id),
+                ('location_type', '=', 'warehouse'),
+                ('warehouse_id', '=', self.warehouse_from_id.id),
+                ('company_id', 'in', company_ids),
+                ('qty_available', '>', 0)
+            ]
+            balances = Balance.search(domain)
+            available_qty = sum(balance.qty_available for balance in balances)
             location_name = self.warehouse_from_id.name
+            
         elif self.transfer_type == 'employee':
-            available_qty = Balance.get_available_qty(
-                nomenclature_id=line.nomenclature_id.id,
-                location_type='employee',
-                employee_id=self.employee_from_id.id,
-                company_id=self.company_id.id
-            )
+            domain = [
+                ('nomenclature_id', '=', line.nomenclature_id.id),
+                ('location_type', '=', 'employee'),
+                ('employee_id', '=', self.employee_from_id.id),
+                ('company_id', 'in', company_ids),
+                ('qty_available', '>', 0)
+            ]
+            balances = Balance.search(domain)
+            available_qty = sum(balance.qty_available for balance in balances)
             location_name = self.employee_from_id.name
+            
         elif self.transfer_type == 'employee_warehouse':
-            available_qty = Balance.get_available_qty(
-                nomenclature_id=line.nomenclature_id.id,
-                location_type='employee',
-                employee_id=self.employee_from_id.id,
-                company_id=self.company_id.id
-            )
+            domain = [
+                ('nomenclature_id', '=', line.nomenclature_id.id),
+                ('location_type', '=', 'employee'),
+                ('employee_id', '=', self.employee_from_id.id),
+                ('company_id', 'in', company_ids),
+                ('qty_available', '>', 0)
+            ]
+            balances = Balance.search(domain)
+            available_qty = sum(balance.qty_available for balance in balances)
             location_name = self.employee_from_id.name
+            
         elif self.transfer_type == 'warehouse_employee':
-            available_qty = Balance.get_available_qty(
-                nomenclature_id=line.nomenclature_id.id,
-                location_type='warehouse',
-                warehouse_id=self.warehouse_from_id.id,
-                company_id=self.company_id.id
-            )
+            domain = [
+                ('nomenclature_id', '=', line.nomenclature_id.id),
+                ('location_type', '=', 'warehouse'),
+                ('warehouse_id', '=', self.warehouse_from_id.id),
+                ('company_id', 'in', company_ids),
+                ('qty_available', '>', 0)
+            ]
+            balances = Balance.search(domain)
+            available_qty = sum(balance.qty_available for balance in balances)
             location_name = self.warehouse_from_id.name
         else:
             raise UserError(_('Невідомий тип переміщення: %s') % self.transfer_type)
@@ -142,6 +170,21 @@ class StockTransfer(models.Model):
                     line.qty
                 )
             )
+    
+    def _get_child_companies(self, company):
+        """Повертає список ID головної компанії та всіх її дочірніх компаній"""
+        company_ids = [company.id]
+        
+        # Рекурсивно додаємо всі дочірні компанії
+        def add_children(parent_company):
+            children = self.env['res.company'].search([('parent_id', '=', parent_company.id)])
+            for child in children:
+                if child.id not in company_ids:
+                    company_ids.append(child.id)
+                    add_children(child)  # Рекурсивно додаємо дочірні дочірніх
+        
+        add_children(company)
+        return company_ids
 
     def _create_balance_movements_for_line(self, line):
         """Створює рухи залишків для позиції переміщення"""
@@ -156,21 +199,27 @@ class StockTransfer(models.Model):
             location_from_id = self.warehouse_from_id.lot_stock_id.id
             location_to_id = self.warehouse_to_id.lot_stock_id.id
             
-            # Використовуємо FIFO для вибору партій
-            fifo_balances, remaining_qty = self.env['stock.balance'].get_fifo_balances(
-                nomenclature_id=line.nomenclature_id.id,
-                required_qty=line.qty,
-                location_type='warehouse',
-                warehouse_id=self.warehouse_from_id.id,
-                company_id=self.company_id.id
-            )
+            # Використовуємо простий FIFO для вибору партій
+            domain = [
+                ('nomenclature_id', '=', line.nomenclature_id.id),
+                ('location_type', '=', 'warehouse'),
+                ('warehouse_id', '=', self.warehouse_from_id.id),
+                ('company_id', 'in', self._get_child_companies(self.company_id)),
+                ('qty_available', '>', 0)
+            ]
+            balances = self.env['stock.balance'].search(domain, order='batch_id ASC, id ASC')
             
-            for fifo_item in fifo_balances:
-                batch_id = fifo_item['balance'].batch_id.id if fifo_item['balance'].batch_id else None
+            remaining_qty = line.qty
+            for balance in balances:
+                if remaining_qty <= 0:
+                    break
+                
+                take_qty = min(balance.qty_available, remaining_qty)
+                batch_id = balance.batch_id.id if balance.batch_id else None
                 
                 Movement.create_movement(
                     nomenclature_id=line.nomenclature_id.id,
-                    qty=fifo_item['qty'],
+                    qty=take_qty,
                     movement_type='transfer_out',
                     operation_type='transfer',
                     location_from_type='warehouse',
@@ -183,26 +232,34 @@ class StockTransfer(models.Model):
                     uom_id=line.selected_uom_id.id,
                     document_reference=self.number,
                     notes=f'Переміщення {self.number}: {self.warehouse_from_id.name} → {self.warehouse_to_id.name}',
-                    company_id=self.company_id.id,
+                    company_id=balance.company_id.id,  # Використовуємо компанію з залишку
                     date=self.posting_datetime,
                 )
+                
+                remaining_qty -= take_qty
         
         elif self.transfer_type == 'employee':
             # Між працівниками
-            fifo_balances, remaining_qty = self.env['stock.balance'].get_fifo_balances(
-                nomenclature_id=line.nomenclature_id.id,
-                required_qty=line.qty,
-                location_type='employee',
-                employee_id=self.employee_from_id.id,
-                company_id=self.company_id.id
-            )
+            domain = [
+                ('nomenclature_id', '=', line.nomenclature_id.id),
+                ('location_type', '=', 'employee'),
+                ('employee_id', '=', self.employee_from_id.id),
+                ('company_id', 'in', self._get_child_companies(self.company_id)),
+                ('qty_available', '>', 0)
+            ]
+            balances = self.env['stock.balance'].search(domain, order='batch_id ASC, id ASC')
             
-            for fifo_item in fifo_balances:
-                batch_id = fifo_item['balance'].batch_id.id if fifo_item['balance'].batch_id else None
+            remaining_qty = line.qty
+            for balance in balances:
+                if remaining_qty <= 0:
+                    break
+                
+                take_qty = min(balance.qty_available, remaining_qty)
+                batch_id = balance.batch_id.id if balance.batch_id else None
                 
                 Movement.create_movement(
                     nomenclature_id=line.nomenclature_id.id,
-                    qty=fifo_item['qty'],
+                    qty=take_qty,
                     movement_type='transfer_out',
                     operation_type='transfer',
                     location_from_type='employee',
@@ -213,28 +270,36 @@ class StockTransfer(models.Model):
                     uom_id=line.selected_uom_id.id,
                     document_reference=self.number,
                     notes=f'Переміщення {self.number}: {self.employee_from_id.name} → {self.employee_to_id.name}',
-                    company_id=self.company_id.id,
+                    company_id=balance.company_id.id,  # Використовуємо компанію з залишку
                     date=self.posting_datetime,
                 )
+                
+                remaining_qty -= take_qty
         
         elif self.transfer_type == 'warehouse_employee':
             # Зі складу працівнику
             location_from_id = self.warehouse_from_id.lot_stock_id.id
             
-            fifo_balances, remaining_qty = self.env['stock.balance'].get_fifo_balances(
-                nomenclature_id=line.nomenclature_id.id,
-                required_qty=line.qty,
-                location_type='warehouse',
-                warehouse_id=self.warehouse_from_id.id,
-                company_id=self.company_id.id
-            )
+            domain = [
+                ('nomenclature_id', '=', line.nomenclature_id.id),
+                ('location_type', '=', 'warehouse'),
+                ('warehouse_id', '=', self.warehouse_from_id.id),
+                ('company_id', 'in', self._get_child_companies(self.company_id)),
+                ('qty_available', '>', 0)
+            ]
+            balances = self.env['stock.balance'].search(domain, order='batch_id ASC, id ASC')
             
-            for fifo_item in fifo_balances:
-                batch_id = fifo_item['balance'].batch_id.id if fifo_item['balance'].batch_id else None
+            remaining_qty = line.qty
+            for balance in balances:
+                if remaining_qty <= 0:
+                    break
+                
+                take_qty = min(balance.qty_available, remaining_qty)
+                batch_id = balance.batch_id.id if balance.batch_id else None
                 
                 Movement.create_movement(
                     nomenclature_id=line.nomenclature_id.id,
-                    qty=fifo_item['qty'],
+                    qty=take_qty,
                     movement_type='transfer_out',
                     operation_type='transfer',
                     location_from_type='warehouse',
@@ -246,28 +311,36 @@ class StockTransfer(models.Model):
                     uom_id=line.selected_uom_id.id,
                     document_reference=self.number,
                     notes=f'Переміщення {self.number}: {self.warehouse_from_id.name} → {self.employee_to_id.name}',
-                    company_id=self.company_id.id,
+                    company_id=balance.company_id.id,  # Використовуємо компанію з залишку
                     date=self.posting_datetime,
                 )
+                
+                remaining_qty -= take_qty
         
         elif self.transfer_type == 'employee_warehouse':
             # Від працівника на склад
             location_to_id = self.warehouse_to_id.lot_stock_id.id
             
-            fifo_balances, remaining_qty = self.env['stock.balance'].get_fifo_balances(
-                nomenclature_id=line.nomenclature_id.id,
-                required_qty=line.qty,
-                location_type='employee',
-                employee_id=self.employee_from_id.id,
-                company_id=self.company_id.id
-            )
+            domain = [
+                ('nomenclature_id', '=', line.nomenclature_id.id),
+                ('location_type', '=', 'employee'),
+                ('employee_id', '=', self.employee_from_id.id),
+                ('company_id', 'in', self._get_child_companies(self.company_id)),
+                ('qty_available', '>', 0)
+            ]
+            balances = self.env['stock.balance'].search(domain, order='batch_id ASC, id ASC')
             
-            for fifo_item in fifo_balances:
-                batch_id = fifo_item['balance'].batch_id.id if fifo_item['balance'].batch_id else None
+            remaining_qty = line.qty
+            for balance in balances:
+                if remaining_qty <= 0:
+                    break
+                
+                take_qty = min(balance.qty_available, remaining_qty)
+                batch_id = balance.batch_id.id if balance.batch_id else None
                 
                 Movement.create_movement(
                     nomenclature_id=line.nomenclature_id.id,
-                    qty=fifo_item['qty'],
+                    qty=take_qty,
                     movement_type='transfer_out',
                     operation_type='transfer',
                     location_from_type='employee',
@@ -279,6 +352,8 @@ class StockTransfer(models.Model):
                     uom_id=line.selected_uom_id.id,
                     document_reference=self.number,
                     notes=f'Переміщення {self.number}: {self.employee_from_id.name} → {self.warehouse_to_id.name}',
-                    company_id=self.company_id.id,
+                    company_id=balance.company_id.id,  # Використовуємо компанію з залишку
                     date=self.posting_datetime,
                 )
+                
+                remaining_qty -= take_qty
