@@ -18,6 +18,8 @@ class StockBatchMovement(models.Model):
         ('in', 'Надходження'),
         ('out', 'Списання'),
         ('transfer', 'Переміщення'),
+        ('transfer_in', 'Переміщення (надходження)'),
+        ('transfer_out', 'Переміщення (списання)'),
         ('adjustment', 'Коригування'),
     ], 'Тип руху', required=True)
     
@@ -28,6 +30,7 @@ class StockBatchMovement(models.Model):
         ('consumption', 'Споживання'),
         ('transfer_in', 'Переміщення (надходження)'),
         ('transfer_out', 'Переміщення (списання)'),
+        ('transfer', 'Переміщення'),
         ('adjustment_in', 'Коригування (+)'),
         ('adjustment_out', 'Коригування (-)'),
         ('reservation', 'Резервування'),

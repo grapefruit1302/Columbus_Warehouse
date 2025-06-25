@@ -49,8 +49,8 @@
                 <field name="date"/>
                 <field name="batch_id"/>
                 <field name="movement_type" widget="badge" 
-                       decoration-success="movement_type == 'in'"
-                       decoration-danger="movement_type == 'out'"
+                       decoration-success="movement_type in ['in', 'transfer_in']"
+                       decoration-danger="movement_type in ['out', 'transfer_out']"
                        decoration-info="movement_type == 'transfer'"
                        decoration-warning="movement_type == 'adjustment'"/>
                 <field name="operation_type"/>
@@ -79,6 +79,8 @@
                 <filter string="Надходження" name="movements_in" domain="[('movement_type', '=', 'in')]"/>
                 <filter string="Списання" name="movements_out" domain="[('movement_type', '=', 'out')]"/>
                 <filter string="Переміщення" name="movements_transfer" domain="[('movement_type', '=', 'transfer')]"/>
+                <filter string="Переміщення (надходження)" name="movements_transfer_in" domain="[('movement_type', '=', 'transfer_in')]"/>
+                <filter string="Переміщення (списання)" name="movements_transfer_out" domain="[('movement_type', '=', 'transfer_out')]"/>
                 <filter string="Коригування" name="movements_adjustment" domain="[('movement_type', '=', 'adjustment')]"/>
                 
                 <separator/>
