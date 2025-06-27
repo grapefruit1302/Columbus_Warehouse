@@ -385,6 +385,78 @@ class StockTransferLine(models.Model):
         default=1.0
     )
 
+
+    @api.onchange('transfer_type')
+    def _onchange_transfer_type(self):
+        """Попереджуємо та очищуємо дані при зміні типу переміщення"""
+        warning = None
+        
+        # Якщо є позиції, показуємо попередження
+        if self.line_ids:
+            warning = {
+                'title': 'Попередження про втрату даних',
+                'message': 'Зміна типу переміщення призведе до видалення всіх введених позицій товарів.'
+            }
+            # Очищаємо позиції
+            self.line_ids = [(5, 0, 0)]
+        
+        # Очищаємо поля залежно від типу переміщення
+        if self.transfer_type == 'warehouse':
+            self.employee_from_id = False
+            self.employee_to_id = False
+        elif self.transfer_type == 'employee':
+            self.warehouse_from_id = False
+            self.warehouse_to_id = False
+        elif self.transfer_type == 'warehouse_employee':
+            self.employee_from_id = False
+            self.warehouse_to_id = False
+        elif self.transfer_type == 'employee_warehouse':
+            self.warehouse_from_id = False
+            self.employee_to_id = False
+        
+        if warning:
+            return {'warning': warning}
+
+    @api.onchange('warehouse_from_id')
+    def _onchange_warehouse_from_id(self):
+        """Попереджуємо та очищуємо позиції при зміні складу відправника"""
+        if self.line_ids and self.warehouse_from_id:
+            # Очищаємо позиції
+            self.line_ids = [(5, 0, 0)]
+            
+            return {
+                'warning': {
+                    'title': 'Попередження про втрату даних',
+                    'message': 'Зміна складу відправника призведе до видалення всіх введених позицій товарів, оскільки доступні товари будуть інші.'
+                }
+            }
+
+    @api.onchange('employee_from_id')
+    def _onchange_employee_from_id(self):
+        """Попереджуємо та очищуємо позиції при зміні працівника відправника"""
+        if self.line_ids and self.employee_from_id:
+            # Очищаємо позиції
+            self.line_ids = [(5, 0, 0)]
+            
+            return {
+                'warning': {
+                    'title': 'Попередження про втрату даних',
+                    'message': 'Зміна працівника відправника призведе до видалення всіх введених позицій товарів, оскільки доступні товари будуть інші.'
+                }
+            }
+
+    @api.onchange('warehouse_to_id')
+    def _onchange_warehouse_to_id(self):
+        """Можемо також попереджати при зміні одержувача якщо потрібно"""
+        # Тут можна додати логіку якщо потрібно попереджати і при зміні одержувача
+        pass
+
+    @api.onchange('employee_to_id')
+    def _onchange_employee_to_id(self):
+        """Можемо також попереджати при зміні одержувача якщо потрібно"""
+        # Тут можна додати логіку якщо потрібно попереджати і при зміні одержувача
+        pass
+
     @api.depends('transfer_id.transfer_type', 'transfer_id.warehouse_from_id', 'transfer_id.employee_from_id')
     def _compute_available_nomenclature_ids(self):
         """Обчислює доступні товари залежно від відправника"""
