@@ -1,33 +1,21 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- stock_transfer/views/stock_transfer_views.xml -->
 <odoo>
     <data>
-        <!-- Form View для переміщень -->
+        <!-- Форма переміщення -->
         <record id="view_stock_transfer_form" model="ir.ui.view">
             <field name="name">stock.transfer.form</field>
             <field name="model">stock.transfer</field>
             <field name="arch" type="xml">
                 <form string="Переміщення товарів">
                     <header>
-                        <button name="action_confirm" string="Підтвердити" type="object" 
+                        <button name="action_confirm" type="object" string="Підтвердити" 
                                 class="oe_highlight" invisible="state != 'draft'"/>
-                        <button name="action_done" string="Провести" type="object" 
+                        <button name="action_done" type="object" string="Виконати" 
                                 class="oe_highlight" invisible="state != 'confirmed'"/>
-                        <button name="action_cancel" string="Скасувати" type="object" 
-                                invisible="state in ['done', 'cancelled']"/>
-                        <button name="action_draft" string="Чернетка" type="object" 
+                        <button name="action_cancel" type="object" string="Скасувати"
+                                invisible="state in ('done', 'cancelled')"/>
+                        <button name="action_draft" type="object" string="В чернетку"
                                 invisible="state != 'cancelled'"/>
-                        
-                        <!-- Кнопки для дебагу -->
-                        <button name="action_debug_balances" string="🔍 Перевірити залишки" 
-                                type="object" class="btn-info"
-                                invisible="state != 'draft'"/>
-                        <button name="action_test_available_products" string="🧪 Тест товарів" 
-                                type="object" class="btn-warning"
-                                invisible="state != 'draft'"/>
-                        <button name="action_check_balance_table" string="📊 Статистика" 
-                                type="object" class="btn-success"
-                                invisible="state != 'draft'"/>
-                        
                         <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
                     </header>
                     
@@ -40,126 +28,98 @@
                         
                         <group>
                             <group>
-                                <field name="date" readonly="state in ['done', 'cancelled']"/>
-                                <field name="transfer_type" readonly="state in ['done', 'cancelled']"/>
-                                <field name="company_id" readonly="state in ['done', 'cancelled']" 
-                                       options="{'no_create': True}"/>
+                                <field name="date" readonly="state in ('done', 'cancelled')"/>
+                                <field name="transfer_type" readonly="state in ('done', 'cancelled')"/>
+                                <field name="company_id" readonly="state in ('done', 'cancelled')"/>
                             </group>
                             <group>
-                                <!-- Поля відправника -->
-                                <field name="warehouse_from_id" 
-                                       string="Склад відправник"
-                                       invisible="transfer_type in ['employee', 'employee_warehouse']"
-                                       required="transfer_type in ['warehouse', 'warehouse_employee']"
-                                       readonly="state in ['done', 'cancelled']"
-                                       options="{'no_create': True}"/>
-                                
-                                <field name="employee_from_id" 
-                                       string="Працівник відправник"
-                                       invisible="transfer_type in ['warehouse', 'warehouse_employee']"
-                                       required="transfer_type in ['employee', 'employee_warehouse']"
-                                       readonly="state in ['done', 'cancelled']"
-                                       options="{'no_create': True}"/>
-                                
-                                <!-- Поля одержувача -->
-                                <field name="warehouse_to_id" 
-                                       string="Склад одержувач"
-                                       invisible="transfer_type in ['employee', 'warehouse_employee']"
-                                       required="transfer_type in ['warehouse', 'employee_warehouse']"
-                                       readonly="state in ['done', 'cancelled']"
-                                       options="{'no_create': True}"/>
-                                
-                                <field name="employee_to_id" 
-                                       string="Працівник одержувач"
-                                       invisible="transfer_type in ['warehouse', 'employee_warehouse']"
-                                       required="transfer_type in ['employee', 'warehouse_employee']"
-                                       readonly="state in ['done', 'cancelled']"
-                                       options="{'no_create': True}"/>
-                                
-                                <field name="posting_datetime" readonly="1" invisible="not posting_datetime"/>
+                                <field name="posting_datetime" readonly="1" invisible="state != 'done'"/>
+                            </group>
+                        </group>
+                        
+                        <!-- Поля відправник/одержувач залежно від типу -->
+                        <group string="Відправник та одержувач">
+                            <group>
+                                <field name="warehouse_from_id" string="Склад відправник"
+                                       invisible="transfer_type not in ('warehouse', 'warehouse_employee')"
+                                       required="transfer_type in ('warehouse', 'warehouse_employee')"
+                                       readonly="state in ('done', 'cancelled')"/>
+                                <field name="employee_from_id" string="Працівник відправник"
+                                       invisible="transfer_type not in ('employee', 'employee_warehouse')"
+                                       required="transfer_type in ('employee', 'employee_warehouse')"
+                                       readonly="state in ('done', 'cancelled')"/>
+                            </group>
+                            <group>
+                                <field name="warehouse_to_id" string="Склад одержувач"
+                                       invisible="transfer_type not in ('warehouse', 'employee_warehouse')"
+                                       required="transfer_type in ('warehouse', 'employee_warehouse')"
+                                       readonly="state in ('done', 'cancelled')"/>
+                                <field name="employee_to_id" string="Працівник одержувач"
+                                       invisible="transfer_type not in ('employee', 'warehouse_employee')"
+                                       required="transfer_type in ('employee', 'warehouse_employee')"
+                                       readonly="state in ('done', 'cancelled')"/>
                             </group>
                         </group>
                         
                         <notebook>
                             <page string="Позиції переміщення">
-                                <field name="line_ids" readonly="state in ['done', 'cancelled']">
-                                    <list string="Позиції переміщення" editable="bottom">
-                                        <!-- Приховане поле для домену -->
+                                <field name="line_ids" readonly="state in ('done', 'cancelled')">
+                                    <tree string="Позиції" editable="bottom">
                                         <field name="available_nomenclature_ids" column_invisible="1"/>
-                                        
-                                        <!-- Тільки потрібні поля -->
-                                        <field name="nomenclature_id" 
-                                               string="Товар"
-                                               required="1"
-                                               domain="[('id', 'in', available_nomenclature_ids)]"
-                                               context="{'default_company_id': parent.company_id}"
-                                               options="{'no_create': True, 'no_open': True}"/>
-                                        
-                                        <field name="available_qty" 
-                                               string="Доступно" 
-                                               readonly="1" 
-                                               decoration-success="available_qty > 0"
-                                               decoration-muted="available_qty == 0"/>
-                                        
-                                        <field name="qty" 
-                                               string="Кількість"
-                                               required="1"
-                                               decoration-success="qty > 0 and qty &lt;= available_qty"
-                                               decoration-warning="qty > available_qty and available_qty > 0"
-                                               decoration-danger="available_qty == 0 and qty > 0"/>
-                                        
-                                        <field name="selected_uom_id" 
-                                               string="Од. виміру"
-                                               required="1" 
-                                               options="{'no_create': True}"/>
-                                    </list>
+                                        <field name="nomenclature_id" required="1" 
+                                               options="{'no_create': True, 'no_edit': True}"/>
+                                        <field name="selected_uom_id" string="Од. вим." required="1"/>
+                                        <field name="available_qty" string="Доступно" readonly="1"/>
+                                        <field name="qty" required="1" string="Кількість"/>
+                                        <field name="batch_info" string="Партії (FIFO)" widget="text" readonly="1"/>
+                                    </tree>
                                 </field>
                             </page>
-                            
                             <page string="Додаткова інформація">
                                 <group>
-                                    <field name="notes" placeholder="Введіть примітки..."/>
+                                    <field name="notes" placeholder="Додаткові примітки до переміщення..."/>
                                 </group>
                             </page>
                         </notebook>
                     </sheet>
                     
-                    <chatter/>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
                 </form>
             </field>
         </record>
 
-        <!-- List View для переміщень -->
+        <!-- Список переміщень -->
         <record id="view_stock_transfer_list" model="ir.ui.view">
             <field name="name">stock.transfer.list</field>
             <field name="model">stock.transfer</field>
             <field name="arch" type="xml">
-                <list string="Переміщення товарів" default_order="date desc, number desc">
+                <list string="Переміщення товарів">
                     <field name="number"/>
                     <field name="date"/>
                     <field name="transfer_type"/>
                     <field name="warehouse_from_id" optional="show"/>
                     <field name="warehouse_to_id" optional="show"/>
-                    <field name="employee_from_id" optional="show"/>
-                    <field name="employee_to_id" optional="show"/>
-                    <field name="state" 
-                           decoration-success="state == 'done'" 
+                    <field name="employee_from_id" optional="hide"/>
+                    <field name="employee_to_id" optional="hide"/>
+                    <field name="state" decoration-success="state == 'done'" 
                            decoration-info="state == 'confirmed'" 
-                           decoration-muted="state == 'cancelled'"
-                           widget="badge"/>
+                           decoration-muted="state == 'cancelled'"/>
                     <field name="posting_datetime" optional="hide"/>
                 </list>
             </field>
         </record>
 
-        <!-- Search View для переміщень -->
+        <!-- Пошук -->
         <record id="view_stock_transfer_search" model="ir.ui.view">
             <field name="name">stock.transfer.search</field>
             <field name="model">stock.transfer</field>
             <field name="arch" type="xml">
                 <search string="Пошук переміщень">
                     <field name="number"/>
-                    <field name="date"/>
                     <field name="warehouse_from_id"/>
                     <field name="warehouse_to_id"/>
                     <field name="employee_from_id"/>
@@ -172,8 +132,8 @@
                     <filter string="Скасовані" name="cancelled" domain="[('state','=','cancelled')]"/>
                     
                     <separator/>
-                    <filter string="Між складами" name="warehouse_transfer" domain="[('transfer_type','=','warehouse')]"/>
-                    <filter string="Між працівниками" name="employee_transfer" domain="[('transfer_type','=','employee')]"/>
+                    <filter string="Між складами" name="warehouse" domain="[('transfer_type','=','warehouse')]"/>
+                    <filter string="Між працівниками" name="employee" domain="[('transfer_type','=','employee')]"/>
                     <filter string="Зі складу працівнику" name="warehouse_to_employee" domain="[('transfer_type','=','warehouse_employee')]"/>
                     <filter string="Від працівника на склад" name="employee_to_warehouse" domain="[('transfer_type','=','employee_warehouse')]"/>
                     
@@ -206,7 +166,7 @@
                 </p>
                 <p>
                     Тут ви можете створювати документи для переміщення товарів між складами та працівниками.
-                    Система автоматично показує тільки ті товари, які є в наявності у відправника.
+                    Система автоматично застосовує FIFO логіку для вибору партій.
                 </p>
             </field>
         </record>
