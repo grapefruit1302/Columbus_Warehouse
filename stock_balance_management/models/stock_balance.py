@@ -113,6 +113,37 @@ class StockBalance(models.Model):
         for balance in self:
             balance.qty_available = balance.qty_on_hand
 
+
+    def get_serial_numbers_list(self):
+        """Повертає список серійних номерів"""
+        self.ensure_one()
+        if not self.serial_numbers:
+            return []
+        
+        serials = []
+        for line in self.serial_numbers.split('\n'):
+            for serial in line.split(','):
+                serial = serial.strip()
+                if serial:
+                    serials.append(serial)
+        return serials
+
+    def action_view_serial_numbers(self):
+        """Відкриває візард для перегляду серійних номерів"""
+        self.ensure_one()
+        
+        if not self.serial_numbers:
+            raise UserError('У цього залишку немає серійних номерів!')
+        
+        return {
+            'name': f'Серійні номери - {self.nomenclature_id.name}',
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.balance.serial.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_balance_id': self.id},
+        }
+
     @api.depends('nomenclature_id', 'location_type', 'warehouse_id', 'employee_id', 'batch_id')
     def _compute_display_name(self):
         for balance in self:
