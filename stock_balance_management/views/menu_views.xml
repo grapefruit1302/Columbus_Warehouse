@@ -15,7 +15,7 @@
     
     <!-- Balance Movements Menu -->
     <menuitem id="menu_stock_balance_movement" 
-              name="Рухи залишків" 
+              name="Рух залишків" 
               parent="menu_stock_balance_management" 
               action="action_stock_balance_movement" 
               sequence="20"/>
@@ -57,4 +57,10 @@
               parent="menu_stock_balance_tools_submenu" 
               action="action_stock_balance_adjustment_wizard" 
               sequence="20"/>
+
+    <menuitem id="menu_stock_serial_report" 
+            name="Звіт по серійних номерах" 
+            parent="menu_stock_balance_management" 
+            action="action_stock_serial_report" 
+            sequence="40"/>
 </odoo>

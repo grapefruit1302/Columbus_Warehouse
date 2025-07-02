@@ -5,3 +5,6 @@ access_stock_balance_movement_user,stock.balance.movement.user,model_stock_balan
 access_stock_balance_movement_manager,stock.balance.movement.manager,model_stock_balance_movement,stock.group_stock_manager,1,1,1,1
 access_stock_balance_report_wizard_user,stock.balance.report.wizard.user,model_stock_balance_report_wizard,stock.group_stock_user,1,1,1,1
 access_stock_balance_adjustment_wizard_user,stock.balance.adjustment.wizard.user,model_stock_balance_adjustment_wizard,stock.group_stock_user,1,1,1,1
+access_stock_balance_serial_wizard,stock.balance.serial.wizard,model_stock_balance_serial_wizard,base.group_user,1,1,1,1
+access_stock_balance_serial_wizard_line,stock.balance.serial.wizard.line,model_stock_balance_serial_wizard_line,base.group_user,1,1,1,1
+access_stock_serial_report,stock.serial.report,model_stock_serial_report,base.group_user,1,0,0,0

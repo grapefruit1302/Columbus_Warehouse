@@ -107,6 +107,37 @@ class StockBalance(models.Model):
          'Повинна бути вказана або локація складу, або працівник, але не обидва!'),
     ]
 
+
+    def get_serial_numbers_list(self):
+        """Повертає список серійних номерів"""
+        self.ensure_one()
+        if not self.serial_numbers:
+            return []
+        
+        serials = []
+        for line in self.serial_numbers.split('\n'):
+            for serial in line.split(','):
+                serial = serial.strip()
+                if serial:
+                    serials.append(serial)
+        return serials
+
+    def action_view_serial_numbers(self):
+        """Відкриває візард для перегляду серійних номерів"""
+        self.ensure_one()
+        
+        if not self.serial_numbers:
+            raise UserError('У цього залишку немає серійних номерів!')
+        
+        return {
+            'name': f'Серійні номери - {self.nomenclature_id.name}',
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.balance.serial.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_balance_id': self.id},
+        }
+
     @api.depends('qty_on_hand')
     def _compute_available_qty(self):
         """Поки що доступна кількість = фізичній (без резервування)"""
@@ -296,10 +327,17 @@ class StockBalance(models.Model):
             ('company_id', '=', self.company_id.id),
         ]
         
+        # ВИПРАВЛЕНО: Використовуємо правильні поля для фільтрації
         if self.location_type == 'warehouse':
-            domain.append(('warehouse_id', '=', self.warehouse_id.id))
-        else:
-            domain.append(('employee_id', '=', self.employee_id.id))
+            # Знаходимо рухи де склад є або джерелом, або пунктом призначення
+            domain.append('|')
+            domain.append(('warehouse_from_id', '=', self.warehouse_id.id))
+            domain.append(('warehouse_to_id', '=', self.warehouse_id.id))
+        else:  # employee
+            # Знаходимо рухи де працівник є або джерелом, або пунктом призначення
+            domain.append('|')
+            domain.append(('employee_from_id', '=', self.employee_id.id))
+            domain.append(('employee_to_id', '=', self.employee_id.id))
         
         if self.batch_id:
             domain.append(('batch_id', '=', self.batch_id.id))
