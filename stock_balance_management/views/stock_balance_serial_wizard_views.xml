@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Форма візарда для перегляду серійних номерів -->
+        <record id="view_stock_balance_serial_wizard_form" model="ir.ui.view">
+            <field name="name">stock.balance.serial.wizard.form</field>
+            <field name="model">stock.balance.serial.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Серійні номери у залишках">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="nomenclature_name" readonly="1"/>
+                                <field name="location_info" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="qty_available" readonly="1"/>
+                            </group>
+                        </group>
+                        
+                        <separator string="Серійні номери"/>
+                        <field name="serial_line_ids" nolabel="1">
+                            <list string="Серійні номери" create="false" delete="false" edit="false">
+                                <field name="serial_number" string="Серійний номер"/>
+                            </list>
+                        </field>
+                    </sheet>
+                    <footer>
+                        <button string="Закрити" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Дія для візарда -->
+        <record id="action_stock_balance_serial_wizard" model="ir.actions.act_window">
+            <field name="name">Серійні номери</field>
+            <field name="res_model">stock.balance.serial.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <!-- Звіт по серійних номерах -->
+        <record id="view_stock_serial_report_list" model="ir.ui.view">
+            <field name="name">stock.serial.report.list</field>
+            <field name="model">stock.serial.report</field>
+            <field name="arch" type="xml">
+                <list string="Звіт по серійних номерах" create="false" edit="false" delete="false">
+                    <field name="nomenclature_name" string="Товар"/>
+                    <field name="serial_number" string="Серійний номер"/>
+                    <field name="location_type" string="Тип локації"/>
+                    <field name="warehouse_name" string="Склад"/>
+                    <field name="employee_name" string="Працівник"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="action_stock_serial_report" model="ir.actions.act_window">
+            <field name="name">Звіт по серійних номерах</field>
+            <field name="res_model">stock.serial.report</field>
+            <field name="view_mode">list</field>
+        </record>
+
+        <!-- Меню для звіту -->
+        <menuitem id="menu_stock_serial_report" 
+                  name="Звіт по серійних номерах" 
+                  parent="menu_stock_balance_management" 
+                  action="action_stock_serial_report" 
+                  sequence="40"/>
+    </data>
+</odoo>

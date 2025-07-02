@@ -13,6 +13,7 @@
         - Інтеграція з партійним обліком
         - FIFO логіка списання
         - Облік товарів у працівників
+        - Облік серійних номерів
     ''',
     'author': 'Петровський Юрій',
     'depends': [
@@ -20,12 +21,14 @@
         'stock',
         'custom_nomenclature',
         'stock_batch_management',
-        'stock_transfer'  # Додаємо залежність від модуля переміщень
+        'stock_transfer',
+        'custom_stock_receipt'  # ДОДАТИ ЦЮ ЗАЛЕЖНІСТЬ
     ],
     'data': [
         'security/ir.model.access.csv',
         'views/stock_balance_views.xml',
         'views/stock_balance_wizard_views.xml',
+        'views/stock_balance_serial_wizard_views.xml',  # ДОДАТИ
         'views/menu_views.xml',
         'reports/stock_balance_reports.xml',
     ],
