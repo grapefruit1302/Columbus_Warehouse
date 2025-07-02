@@ -243,6 +243,11 @@
                     <filter string="Дата" name="group_date" context="{'group_by': 'date'}"/>
                     <filter string="Документ" name="group_document" context="{'group_by': 'document_reference'}"/>
                     <filter string="Користувач" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <!-- ВИПРАВЛЕНО: Видалено неіснуюче поле employee_id -->
+                    <filter string="Працівник (з)" name="group_employee_from" context="{'group_by': 'employee_from_id'}"/>
+                    <filter string="Працівник (в)" name="group_employee_to" context="{'group_by': 'employee_to_id'}"/>
+                    <filter string="Партія" name="group_batch" context="{'group_by': 'batch_id'}"/>
+                    <filter string="Компанія" name="group_company" context="{'group_by': 'company_id'}"/>
                 </group>
             </search>
         </field>
@@ -297,4 +302,36 @@
         <field name="view_mode">graph,pivot</field>
         <field name="context">{'search_default_this_month': 1}</field>
     </record>
+
+
+    <record id="view_stock_balance_form_serial_button" model="ir.ui.view">
+        <field name="name">stock.balance.form.serial.button</field>
+        <field name="model">stock.balance</field>
+        <field name="inherit_id" ref="stock_balance_form_view"/>
+        <field name="arch" type="xml">
+            <div class="oe_button_box" position="inside">
+                <button name="action_view_serial_numbers" type="object" 
+                        class="oe_stat_button" icon="fa-barcode"
+                        invisible="serial_numbers == False">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Серійні номери</span>
+                    </div>
+                </button>
+            </div>
+        </field>
+    </record>
+
+    <!-- Додати колонку серійних номерів -->
+    <record id="view_stock_balance_list_serial" model="ir.ui.view">
+        <field name="name">stock.balance.list.serial</field>
+        <field name="model">stock.balance</field>
+        <field name="inherit_id" ref="stock_balance_list_view"/>
+        <field name="arch" type="xml">
+            <field name="qty_available" position="after">
+                <field name="serial_numbers" string="S/N" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+
 </odoo>

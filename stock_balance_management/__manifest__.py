@@ -26,6 +26,7 @@
         'security/ir.model.access.csv',
         'views/stock_balance_views.xml',
         'views/stock_balance_wizard_views.xml',
+        'views/stock_balance_serial_wizard_views.xml',  # ДОДАТИ
         'views/menu_views.xml',
         'reports/stock_balance_reports.xml',
     ],

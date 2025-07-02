@@ -516,3 +516,58 @@ class StockReceiptDisposal(models.Model):
             )
             # Викидаємо помилку далі, щоб не приховувати проблему  
             raise
+
+class StockReceiptIncoming(models.Model):
+    _inherit = 'stock.receipt.incoming'
+
+    def action_done(self):
+        result = super().action_done()
+        
+        for line in self.line_ids:
+            if line.qty > 0:
+                Movement = self.env['stock.balance.movement']
+                serial_numbers = line.serial_numbers if line.tracking_serial else None
+                
+                Movement.create_movement(
+                    nomenclature_id=line.nomenclature_id.id,
+                    movement_type='in',
+                    operation_type='receipt',
+                    qty=line.qty,
+                    uom_id=line.selected_uom_id.id,
+                    date=self.posting_datetime or fields.Datetime.now(),
+                    document_reference=f'Прихідна накладна {self.number}',
+                    serial_numbers=serial_numbers,
+                    company_id=self.company_id.id,
+                    location_to_type='warehouse',
+                    warehouse_to_id=self.warehouse_id.id,
+                    location_to_id=self.warehouse_id.lot_stock_id.id,
+                )
+        return result
+
+# Інтеграція для актів оприходування
+class StockReceiptDisposal(models.Model):
+    _inherit = 'stock.receipt.disposal'
+
+    def action_done(self):
+        result = super().action_done()
+        
+        for line in self.line_ids:
+            if line.qty > 0:
+                Movement = self.env['stock.balance.movement']
+                serial_numbers = line.serial_numbers if line.tracking_serial else None
+                
+                Movement.create_movement(
+                    nomenclature_id=line.nomenclature_id.id,
+                    movement_type='in',
+                    operation_type='disposal',
+                    qty=line.qty,
+                    uom_id=line.selected_uom_id.id,
+                    date=self.posting_datetime or fields.Datetime.now(),
+                    document_reference=f'Акт оприходування {self.number}',
+                    serial_numbers=serial_numbers,
+                    company_id=self.company_id.id,
+                    location_to_type='warehouse',
+                    warehouse_to_id=self.warehouse_id.id,
+                    location_to_id=self.warehouse_id.lot_stock_id.id,
+                )
+        return result
