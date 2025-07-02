@@ -71,6 +71,7 @@
     </record>
 
     <!-- Stock Balance Search View -->
+    <!-- Замініть весь search view для stock.balance -->
     <record id="stock_balance_search_view" model="ir.ui.view">
         <field name="name">stock.balance.search</field>
         <field name="model">stock.balance</field>
@@ -88,10 +89,11 @@
                 <filter string="З наявністю" name="with_qty" domain="[('qty_available', '>', 0)]"/>
                 <filter string="Нульові залишки" name="zero_qty" domain="[('qty_available', '=', 0)]"/>
                 <filter string="З партіями" name="with_batches" domain="[('batch_id', '!=', False)]"/>
+                <filter string="З серійними номерами" name="with_serials" domain="[('serial_numbers', '!=', False)]"/>
                 
                 <separator/>
                 <filter string="Сьогодні оновлені" name="updated_today" 
-                        domain="[('last_update', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                        domain="[('last_update', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('last_update', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
                 
                 <group expand="0" string="Групування">
                     <filter string="Номенклатура" name="group_nomenclature" context="{'group_by': 'nomenclature_id'}"/>
