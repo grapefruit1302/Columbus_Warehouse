@@ -209,7 +209,7 @@
         </field>
     </record>
 
-    <!-- Stock Balance Movement Search View -->
+   <!-- Замініть цей search view -->
     <record id="stock_balance_movement_search_view" model="ir.ui.view">
         <field name="name">stock.balance.movement.search</field>
         <field name="model">stock.balance.movement</field>
@@ -230,6 +230,7 @@
                 
                 <separator/>
                 <filter string="Прихідні" name="receipts" domain="[('operation_type', '=', 'receipt')]"/>
+                <filter string="Акти оприходування" name="disposals" domain="[('operation_type', '=', 'disposal')]"/>
                 <filter string="Переміщення" name="transfers" domain="[('operation_type', '=', 'transfer')]"/>
                 <filter string="Коригування" name="adjustments" domain="[('operation_type', '=', 'adjustment')]"/>
                 
