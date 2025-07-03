@@ -14,7 +14,14 @@ class StockSerialReport(models.Model):
     ], 'Тип локації')
     warehouse_name = fields.Char('Склад')
     employee_name = fields.Char('Працівник')
+    
+    # ДОДАЄМО нові поля
+    batch_number = fields.Char('Партія')
+    document_reference = fields.Char('Документ')
+    source_document_type = fields.Char('Тип документу')
+    
     company_id = fields.Many2one('res.company', 'Компанія')
+    qty_available = fields.Float('Доступна кількість')
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
@@ -28,11 +35,21 @@ class StockSerialReport(models.Model):
                     sb.location_type,
                     sw.name AS warehouse_name,
                     he.name AS employee_name,
-                    sb.company_id
+                    COALESCE(batch.batch_number, '') AS batch_number,
+                    COALESCE(batch.source_document_number, '') AS document_reference,
+                    CASE 
+                        WHEN batch.source_document_type = 'receipt' THEN 'Прихідна накладна'
+                        WHEN batch.source_document_type = 'inventory' THEN 'Акт оприходування'
+                        WHEN batch.source_document_type = 'return' THEN 'Повернення з сервісу'
+                        ELSE COALESCE(batch.source_document_type, '')
+                    END AS source_document_type,
+                    sb.company_id,
+                    sb.qty_available
                 FROM stock_balance sb
                 LEFT JOIN product_nomenclature pn ON pn.id = sb.nomenclature_id
                 LEFT JOIN stock_warehouse sw ON sw.id = sb.warehouse_id
                 LEFT JOIN hr_employee he ON he.id = sb.employee_id
+                LEFT JOIN stock_batch batch ON batch.id = sb.batch_id
                 CROSS JOIN LATERAL (
                     SELECT trim(serial) AS serial_number
                     FROM unnest(string_to_array(replace(sb.serial_numbers, E'\n', ','), ',')) AS serial
@@ -41,5 +58,6 @@ class StockSerialReport(models.Model):
                 WHERE sb.serial_numbers IS NOT NULL
                 AND sb.serial_numbers != ''
                 AND sb.qty_available > 0
+                ORDER BY pn.name, serial_data.serial_number
             )
         """ % self._table)

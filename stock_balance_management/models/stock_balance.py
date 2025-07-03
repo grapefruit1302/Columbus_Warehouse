@@ -61,30 +61,7 @@ class StockBalance(models.Model):
         compute='_compute_available_qty',
         store=True,
         digits='Product Unit of Measure',
-        help='Кількість доступна для операцій (залежить від серійних номерів)'
-    )
-    
-    # НОВІ ПОЛЯ для серійних номерів
-    has_serial_tracking = fields.Boolean(
-        'Має серійний облік',
-        related='nomenclature_id.tracking_serial',
-        readonly=True,
-        help='Чи має товар облік по серійних номерах'
-    )
-    
-    serial_numbers_count = fields.Integer(
-        'Кількість введених S/N',
-        compute='_compute_serial_info',
-        store=True,
-        help='Кількість введених серійних номерів'
-    )
-    
-    missing_serial_count = fields.Float(
-        'Без серійних номерів',
-        compute='_compute_available_qty',
-        store=True,
-        digits='Product Unit of Measure',
-        help='Кількість товару без введених серійних номерів'
+        help='Кількість доступна для операцій'
     )
     
     # Додаткові поля
@@ -113,6 +90,14 @@ class StockBalance(models.Model):
         help='Серійні номери товарів (для товарів з S/N обліком)'
     )
     
+    # ДОДАЄМО поле для відображення серійних номерів у вигляді списку
+    serial_line_ids = fields.One2many(
+        'stock.balance.serial.line', 
+        'balance_id', 
+        'Серійні номери',
+        compute='_compute_serial_lines'
+    )
+    
     # Розрахункове поле для відображення
     display_name = fields.Char(
         'Назва',
@@ -130,32 +115,31 @@ class StockBalance(models.Model):
          'Повинна бути вказана або локація складу, або працівник, але не обидва!'),
     ]
 
-    @api.depends('serial_numbers')
-    def _compute_serial_info(self):
-        """Розраховує кількість введених серійних номерів"""
-        for balance in self:
-            if balance.serial_numbers:
-                serials = balance.get_serial_numbers_list()
-                balance.serial_numbers_count = len(serials)
-            else:
-                balance.serial_numbers_count = 0
-
-    @api.depends('qty_on_hand', 'serial_numbers_count', 'has_serial_tracking')
+    @api.depends('qty_on_hand')
     def _compute_available_qty(self):
-        """НОВА ЛОГІКА: доступна кількість залежить від серійних номерів"""
+        """Поки що доступна кількість = фізичній (без резервування)"""
         for balance in self:
-            if balance.has_serial_tracking:
-                # Для товарів з серійним обліком: доступна кількість = кількість введених серійних номерів
-                balance.qty_available = balance.serial_numbers_count
-                balance.missing_serial_count = balance.qty_on_hand - balance.serial_numbers_count
-            else:
-                # Для товарів без серійного обліку: доступна кількість = фізична кількість
-                balance.qty_available = balance.qty_on_hand
-                balance.missing_serial_count = 0.0
+            balance.qty_available = balance.qty_on_hand
 
-    def get_serial_numbers_list(self):
+    @api.depends('serial_numbers')
+    def _compute_serial_lines(self):
+        """Створює тимчасові записи для відображення серійних номерів"""
+        for balance in self:
+            # Очищаємо попередні записи
+            balance.serial_line_ids = [(5, 0, 0)]
+            
+            if balance.serial_numbers:
+                serials = balance._get_serial_numbers_list()
+                line_vals = []
+                for serial in serials:
+                    line_vals.append((0, 0, {
+                        'serial_number': serial,
+                        'balance_id': balance.id,
+                    }))
+                balance.serial_line_ids = line_vals
+
+    def _get_serial_numbers_list(self):
         """Повертає список серійних номерів"""
-        self.ensure_one()
         if not self.serial_numbers:
             return []
         
@@ -166,61 +150,6 @@ class StockBalance(models.Model):
                 if serial:
                     serials.append(serial)
         return serials
-
-    def get_serial_numbers_detailed(self):
-        """Повертає детальну інформацію про серійні номери"""
-        self.ensure_one()
-        serials = self.get_serial_numbers_list()
-        
-        detailed_info = []
-        for i, serial in enumerate(serials, 1):
-            # Тут можна додати додаткову інформацію про серійний номер
-            # наприклад, дату надходження, документ, тощо
-            detailed_info.append({
-                'number': i,
-                'serial_number': serial,
-                'status': 'available',  # можна розширити статуси
-                'batch_number': self.batch_id.batch_number if self.batch_id else '',
-                'location': self._get_location_name(),
-            })
-        
-        return detailed_info
-
-    def _get_location_name(self):
-        """Повертає назву локації"""
-        if self.location_type == 'warehouse':
-            return self.warehouse_id.name if self.warehouse_id else ''
-        else:
-            return self.employee_id.name if self.employee_id else ''
-
-    def action_view_serial_numbers(self):
-        """Відкриває розширений візард для перегляду серійних номерів"""
-        self.ensure_one()
-        
-        if not self.serial_numbers:
-            raise UserError('У цього залишку немає серійних номерів!')
-        
-        return {
-            'name': f'Серійні номери - {self.nomenclature_id.name}',
-            'type': 'ir.actions.act_window',
-            'res_model': 'stock.balance.serial.detailed.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'default_balance_id': self.id},
-        }
-
-    def action_manage_serial_numbers(self):
-        """Відкриває візард для управління серійними номерами"""
-        self.ensure_one()
-        
-        return {
-            'name': f'Управління серійними номерами - {self.nomenclature_id.name}',
-            'type': 'ir.actions.act_window',
-            'res_model': 'stock.balance.serial.management.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'default_balance_id': self.id},
-        }
 
     @api.depends('nomenclature_id', 'location_type', 'warehouse_id', 'employee_id', 'batch_id')
     def _compute_display_name(self):
@@ -237,7 +166,6 @@ class StockBalance(models.Model):
             
             balance.display_name = " | ".join(name_parts)
 
-    # Решта методів залишається без змін...
     @api.model
     def get_balance(self, nomenclature_id, location_type='warehouse', warehouse_id=None, 
                    employee_id=None, location_id=None, batch_id=None, company_id=None):
@@ -268,7 +196,7 @@ class StockBalance(models.Model):
     def update_balance(self, nomenclature_id, qty_change, location_type='warehouse', 
                       warehouse_id=None, employee_id=None, location_id=None, 
                       batch_id=None, uom_id=None, company_id=None, serial_numbers=None):
-        """Оновлює залишок товару"""
+        """Оновлює залишок товару з правильним додаванням серійних номерів"""
         if company_id is None:
             company_id = self.env.company.id
         
@@ -302,29 +230,25 @@ class StockBalance(models.Model):
             # Оновлюємо існуючий запис
             new_qty = balance.qty_on_hand + qty_change
             
-            # Логіка оновлення серійних номерів
-            updated_serials = balance.serial_numbers or ''
-            if serial_numbers:
-                if updated_serials:
-                    # Додаємо нові серійні номери до існуючих
-                    existing_serials = set(balance.get_serial_numbers_list())
-                    new_serials = set(serial_numbers.replace('\n', ',').split(','))
-                    new_serials = [s.strip() for s in new_serials if s.strip()]
-                    
-                    # Фільтруємо дублікати
-                    unique_new_serials = [s for s in new_serials if s not in existing_serials]
-                    if unique_new_serials:
-                        if updated_serials.strip():
-                            updated_serials = updated_serials + '\n' + '\n'.join(unique_new_serials)
-                        else:
-                            updated_serials = '\n'.join(unique_new_serials)
-                else:
-                    updated_serials = serial_numbers
+            # ПРАВИЛЬНО обробляємо серійні номери
+            existing_serials = balance._get_serial_numbers_list()
+            if serial_numbers and qty_change > 0:  # Додаємо серійні номери при надходженні
+                new_serials = []
+                for line in serial_numbers.split('\n'):
+                    for serial in line.split(','):
+                        serial = serial.strip()
+                        if serial and serial not in existing_serials:
+                            new_serials.append(serial)
+                
+                all_serials = existing_serials + new_serials
+                combined_serials = '\n'.join(all_serials) if all_serials else balance.serial_numbers
+            else:
+                combined_serials = balance.serial_numbers
             
             balance.write({
                 'qty_on_hand': new_qty,
                 'last_update': fields.Datetime.now(),
-                'serial_numbers': updated_serials,
+                'serial_numbers': combined_serials,
             })
         else:
             # Створюємо новий запис
@@ -351,6 +275,73 @@ class StockBalance(models.Model):
         
         return balance
 
+    @api.model
+    def get_available_qty(self, nomenclature_id, location_type='warehouse', 
+                         warehouse_id=None, employee_id=None, batch_id=None, company_id=None):
+        """Отримує доступну кількість товару"""
+        return self.get_balance(
+            nomenclature_id=nomenclature_id,
+            location_type=location_type,
+            warehouse_id=warehouse_id,
+            employee_id=employee_id,
+            batch_id=batch_id,
+            company_id=company_id
+        )
+
+    @api.model
+    def check_availability(self, nomenclature_id, required_qty, location_type='warehouse',
+                          warehouse_id=None, employee_id=None, batch_id=None, company_id=None):
+        """Перевіряє доступність товару для операції"""
+        available_qty = self.get_available_qty(
+            nomenclature_id=nomenclature_id,
+            location_type=location_type,
+            warehouse_id=warehouse_id,
+            employee_id=employee_id,
+            batch_id=batch_id,
+            company_id=company_id
+        )
+        
+        return available_qty >= required_qty
+
+    @api.model
+    def get_fifo_balances(self, nomenclature_id, required_qty, location_type='warehouse',
+                         warehouse_id=None, employee_id=None, company_id=None):
+        """Отримує залишки за FIFO принципом для списання"""
+        if company_id is None:
+            company_id = self.env.company.id
+        
+        domain = [
+            ('nomenclature_id', '=', nomenclature_id),
+            ('location_type', '=', location_type),
+            ('company_id', '=', company_id),
+            ('qty_available', '>', 0),
+        ]
+        
+        if location_type == 'warehouse':
+            domain.append(('warehouse_id', '=', warehouse_id))
+        else:
+            domain.append(('employee_id', '=', employee_id))
+        
+        # Сортуємо за датою створення партії (FIFO)
+        balances = self.search(domain, order='batch_id.date_created ASC, id ASC')
+        
+        fifo_list = []
+        remaining_qty = required_qty
+        
+        for balance in balances:
+            if remaining_qty <= 0:
+                break
+            
+            available = min(balance.qty_available, remaining_qty)
+            if available > 0:
+                fifo_list.append({
+                    'balance': balance,
+                    'qty': available,
+                })
+                remaining_qty -= available
+        
+        return fifo_list, remaining_qty
+
     def action_view_movements(self):
         """Показує рухи по цьому залишку"""
         self.ensure_one()
@@ -375,3 +366,12 @@ class StockBalance(models.Model):
             'domain': domain,
             'context': {'create': False},
         }
+
+
+# ДОДАЄМО модель для відображення серійних номерів
+class StockBalanceSerialLine(models.TransientModel):
+    _name = 'stock.balance.serial.line'
+    _description = 'Серійний номер у залишках'
+
+    balance_id = fields.Many2one('stock.balance', 'Залишок', required=True, ondelete='cascade')
+    serial_number = fields.Char('Серійний номер', required=True)

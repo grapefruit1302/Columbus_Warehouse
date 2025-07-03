@@ -5,4 +5,3 @@ from . import stock_receipt_serial_wizard
 from . import dashboard
 from . import res_company
 from . import stock_disposal_serial_wizard
-from . import stock_receipt_integration 
