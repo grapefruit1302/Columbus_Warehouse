@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Stock Balance Form View -->
+    <!-- Stock Balance Form View - ОНОВЛЕНИЙ -->
     <record id="stock_balance_form_view" model="ir.ui.view">
         <field name="name">stock.balance.form</field>
         <field name="model">stock.balance</field>
@@ -13,6 +13,25 @@
                                 <span class="o_stat_text">Рухи</span>
                             </div>
                         </button>
+                        <button name="action_view_serial_numbers" type="object" class="oe_stat_button" icon="fa-barcode"
+                                invisible="not has_serial_tracking or not serial_numbers">
+                            <field name="serial_numbers_count" widget="statinfo" string="Серійні номери"/>
+                        </button>
+                        <button name="action_manage_serial_numbers" type="object" class="oe_stat_button" icon="fa-cogs"
+                                invisible="not has_serial_tracking">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Управління S/N</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <!-- Попередження про неповні серійні номери -->
+                    <div class="alert alert-warning" role="alert" 
+                         invisible="not has_serial_tracking or missing_serial_count == 0">
+                        <i class="fa fa-warning"/> 
+                        <strong>Увага!</strong> 
+                        <field name="missing_serial_count"/> одиниць товару без серійних номерів. 
+                        Вони недоступні для операцій.
                     </div>
                     
                     <group>
@@ -20,10 +39,18 @@
                             <field name="nomenclature_id" readonly="1"/>
                             <field name="uom_id" readonly="1"/>
                             <field name="batch_id" readonly="1"/>
+                            <field name="has_serial_tracking" readonly="1"/>
                         </group>
                         <group name="quantities">
                             <field name="qty_on_hand" readonly="1"/>
-                            <field name="qty_available" readonly="1"/>
+                            <field name="qty_available" readonly="1" 
+                                   decoration-success="qty_available == qty_on_hand"
+                                   decoration-warning="qty_available &lt; qty_on_hand"/>
+                            <field name="serial_numbers_count" readonly="1" 
+                                   invisible="not has_serial_tracking"/>
+                            <field name="missing_serial_count" readonly="1" 
+                                   invisible="not has_serial_tracking or missing_serial_count == 0"
+                                   decoration-danger="missing_serial_count &gt; 0"/>
                         </group>
                     </group>
                     
@@ -40,20 +67,25 @@
                         </group>
                     </group>
                     
-                    <group string="Серійні номери" invisible="not serial_numbers">
-                        <field name="serial_numbers" widget="text" readonly="1"/>
+                    <!-- Серійні номери тепер в спрощеному вигляді -->
+                    <group string="Серійні номери" invisible="not has_serial_tracking or not serial_numbers">
+                        <div class="alert alert-info">
+                            <p><strong>Кількість серійних номерів:</strong> <field name="serial_numbers_count" readonly="1"/></p>
+                            <p>Для детального перегляду використовуйте кнопку "Серійні номери" вгорі</p>
+                        </div>
                     </group>
                 </sheet>
             </form>
         </field>
     </record>
 
-    <!-- Stock Balance List View -->
+    <!-- Stock Balance List View - ОНОВЛЕНИЙ -->
     <record id="stock_balance_list_view" model="ir.ui.view">
         <field name="name">stock.balance.list</field>
         <field name="model">stock.balance</field>
         <field name="arch" type="xml">
-            <list string="Залишки товарів" default_order="nomenclature_id, location_type, warehouse_id, employee_id" create="false" edit="false">
+            <list string="Залишки товарів" default_order="nomenclature_id, location_type, warehouse_id, employee_id" 
+                  create="false" edit="false">
                 <field name="nomenclature_id"/>
                 <field name="location_type" widget="badge" 
                        decoration-info="location_type == 'warehouse'"
@@ -61,17 +93,38 @@
                 <field name="warehouse_id" optional="show"/>
                 <field name="employee_id" optional="show"/>
                 <field name="batch_id" optional="hide"/>
+                
+                <!-- НОВІ КОЛОНКИ -->
+                <field name="has_serial_tracking" string="S/N облік" widget="boolean_toggle" optional="hide"/>
                 <field name="qty_on_hand" sum="Всього фізично"/>
-                <field name="qty_available" sum="Всього доступно"/>
+                <field name="qty_available" sum="Всього доступно"
+                       decoration-success="qty_available == qty_on_hand"
+                       decoration-warning="qty_available &lt; qty_on_hand and qty_available &gt; 0"
+                       decoration-danger="qty_available == 0 and qty_on_hand &gt; 0"/>
+                
+                <!-- Серійні номери -->
+                <field name="serial_numbers_count" string="S/N введено" optional="show"
+                       invisible="not has_serial_tracking"/>
+                <field name="missing_serial_count" string="Без S/N" optional="show"
+                       invisible="not has_serial_tracking"
+                       decoration-danger="missing_serial_count &gt; 0"/>
+                
                 <field name="uom_id"/>
                 <field name="last_update" optional="hide"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                
+                <!-- КНОПКИ ДІЙЇ -->
+                <button name="action_view_serial_numbers" string="Переглянути S/N" type="object" 
+                        class="btn-info btn-sm" icon="fa-barcode"
+                        invisible="not has_serial_tracking or not serial_numbers"/>
+                <button name="action_manage_serial_numbers" string="Управління S/N" type="object" 
+                        class="btn-warning btn-sm" icon="fa-cogs"
+                        invisible="not has_serial_tracking"/>
             </list>
         </field>
     </record>
 
-    <!-- Stock Balance Search View -->
-    <!-- Замініть весь search view для stock.balance -->
+    <!-- Stock Balance Search View - ОНОВЛЕНИЙ -->
     <record id="stock_balance_search_view" model="ir.ui.view">
         <field name="name">stock.balance.search</field>
         <field name="model">stock.balance</field>
@@ -88,6 +141,21 @@
                 <separator/>
                 <filter string="З наявністю" name="with_qty" domain="[('qty_available', '>', 0)]"/>
                 <filter string="Нульові залишки" name="zero_qty" domain="[('qty_available', '=', 0)]"/>
+                
+                <!-- НОВІ ФІЛЬТРИ -->
+                <separator/>
+                <filter string="З серійним обліком" name="with_serial_tracking" domain="[('has_serial_tracking', '=', True)]"/>
+                <filter string="Без серійного обліку" name="without_serial_tracking" domain="[('has_serial_tracking', '=', False)]"/>
+                
+                <separator/>
+                <filter string="Неповні серійні номери" name="incomplete_serials" 
+                        domain="[('has_serial_tracking', '=', True), ('missing_serial_count', '>', 0)]"/>
+                <filter string="Повні серійні номери" name="complete_serials" 
+                        domain="[('has_serial_tracking', '=', True), ('missing_serial_count', '=', 0), ('qty_on_hand', '>', 0)]"/>
+                <filter string="Без серійних номерів взагалі" name="no_serials" 
+                        domain="[('has_serial_tracking', '=', True), ('serial_numbers_count', '=', 0), ('qty_on_hand', '>', 0)]"/>
+                
+                <separator/>
                 <filter string="З партіями" name="with_batches" domain="[('batch_id', '!=', False)]"/>
                 <filter string="З серійними номерами" name="with_serials" domain="[('serial_numbers', '!=', False)]"/>
                 
@@ -101,157 +169,183 @@
                     <filter string="Склад" name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
                     <filter string="Працівник" name="group_employee" context="{'group_by': 'employee_id'}"/>
                     <filter string="Партія" name="group_batch" context="{'group_by': 'batch_id'}"/>
+                    <filter string="Серійний облік" name="group_serial_tracking" context="{'group_by': 'has_serial_tracking'}"/>
                     <filter string="Компанія" name="group_company" context="{'group_by': 'company_id'}"/>
                 </group>
             </search>
         </field>
     </record>
 
-    <!-- Stock Balance Pivot View -->
-    <record id="stock_balance_pivot_view" model="ir.ui.view">
-        <field name="name">stock.balance.pivot</field>
-        <field name="model">stock.balance</field>
+    <!-- Детальний візард перегляду серійних номерів -->
+    <record id="view_stock_balance_serial_detailed_wizard_form" model="ir.ui.view">
+        <field name="name">stock.balance.serial.detailed.wizard.form</field>
+        <field name="model">stock.balance.serial.detailed.wizard</field>
         <field name="arch" type="xml">
-            <pivot string="Аналіз залишків">
-                <field name="nomenclature_id" type="row"/>
-                <field name="location_type" type="col"/>
-                <field name="qty_on_hand" type="measure"/>
-                <field name="qty_available" type="measure"/>
-            </pivot>
-        </field>
-    </record>
-
-    <!-- Stock Balance Graph View -->
-    <record id="stock_balance_graph_view" model="ir.ui.view">
-        <field name="name">stock.balance.graph</field>
-        <field name="model">stock.balance</field>
-        <field name="arch" type="xml">
-            <graph string="Аналіз залишків" type="bar">
-                <field name="nomenclature_id"/>
-                <field name="qty_available" type="measure"/>
-            </graph>
-        </field>
-    </record>
-
-    <!-- Stock Balance Movement Form View -->
-    <record id="stock_balance_movement_form_view" model="ir.ui.view">
-        <field name="name">stock.balance.movement.form</field>
-        <field name="model">stock.balance.movement</field>
-        <field name="arch" type="xml">
-            <form string="Рух залишків" create="false" edit="false">
+            <form string="Детальний перегляд серійних номерів">
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_export_serials" type="object" class="oe_stat_button" icon="fa-download">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Експорт</span>
+                            </div>
+                        </button>
+                        <button name="action_manage_serials" type="object" class="oe_stat_button" icon="fa-edit">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Редагувати</span>
+                            </div>
+                        </button>
+                    </div>
+                    
                     <group>
-                        <group name="main_info">
-                            <field name="nomenclature_id" readonly="1"/>
-                            <field name="movement_type" readonly="1"/>
-                            <field name="operation_type" readonly="1"/>
-                            <field name="qty" readonly="1"/>
-                            <field name="uom_id" readonly="1"/>
+                        <group name="product_info">
+                            <field name="nomenclature_name" readonly="1"/>
+                            <field name="location_info" readonly="1"/>
+                            <field name="batch_info" readonly="1"/>
                         </group>
-                        <group name="meta_info">
-                            <field name="date" readonly="1"/>
-                            <field name="document_reference" readonly="1"/>
-                            <field name="user_id" readonly="1"/>
-                            <field name="company_id" readonly="1"/>
-                        </group>
-                    </group>
-                    
-                    <group string="Локації">
-                        <group name="location_from" string="Звідки">
-                            <field name="location_from_type" readonly="1"/>
-                            <field name="warehouse_from_id" readonly="1" invisible="location_from_type != 'warehouse'"/>
-                            <field name="employee_from_id" readonly="1" invisible="location_from_type != 'employee'"/>
-                            <field name="location_from_id" readonly="1" invisible="location_from_type != 'warehouse'"/>
-                        </group>
-                        <group name="location_to" string="Куди">
-                            <field name="location_to_type" readonly="1"/>
-                            <field name="warehouse_to_id" readonly="1" invisible="location_to_type != 'warehouse'"/>
-                            <field name="employee_to_id" readonly="1" invisible="location_to_type != 'employee'"/>
-                            <field name="location_to_id" readonly="1" invisible="location_to_type != 'warehouse'"/>
+                        <group name="quantities">
+                            <field name="qty_on_hand" readonly="1"/>
+                            <field name="qty_available" readonly="1"/>
+                            <field name="serial_numbers_count" readonly="1"/>
+                            <field name="missing_serial_count" readonly="1" 
+                                   decoration-danger="missing_serial_count &gt; 0"/>
                         </group>
                     </group>
                     
-                    <group string="Додаткова інформація">
-                        <field name="batch_id" readonly="1"/>
-                        <field name="notes" widget="text" readonly="1"/>
-                        <field name="serial_numbers" widget="text" readonly="1" invisible="not serial_numbers"/>
+                    <!-- Статистика -->
+                    <group name="statistics">
+                        <group>
+                            <field name="completeness_percentage" readonly="1" widget="percentage"/>
+                        </group>
+                        <group>
+                            <field name="has_missing_serials" readonly="1"/>
+                        </group>
                     </group>
+                    
+                    <!-- Попередження -->
+                    <div class="alert alert-warning" role="alert" invisible="not has_missing_serials">
+                        <i class="fa fa-warning"/> 
+                        <strong>Увага!</strong> 
+                        Є товар без серійних номерів. Заповненість: <field name="completeness_percentage"/>%
+                    </div>
+                    
+                    <separator string="Серійні номери"/>
+                    <field name="serial_line_ids" nolabel="1">
+                        <list string="Серійні номери" create="false" delete="false" edit="false">
+                            <field name="sequence" string="№"/>
+                            <field name="serial_number" string="Серійний номер"/>
+                            <field name="status" string="Статус" widget="badge"/>
+                            <field name="batch_number" string="Партія"/>
+                            <field name="location_name" string="Локація"/>
+                        </list>
+                    </field>
                 </sheet>
+                <footer>
+                    <button name="action_manage_serials" string="Редагувати" type="object" class="btn-primary"/>
+                    <button string="Закрити" class="btn-secondary" special="cancel"/>
+                </footer>
             </form>
         </field>
     </record>
 
-    <!-- Stock Balance Movement List View -->
-    <record id="stock_balance_movement_list_view" model="ir.ui.view">
-        <field name="name">stock.balance.movement.list</field>
-        <field name="model">stock.balance.movement</field>
+    <!-- Візард управління серійними номерами -->
+    <record id="view_stock_balance_serial_management_wizard_form" model="ir.ui.view">
+        <field name="name">stock.balance.serial.management.wizard.form</field>
+        <field name="model">stock.balance.serial.management.wizard</field>
         <field name="arch" type="xml">
-            <list string="Рухи залишків" default_order="date desc" create="false" edit="false">
-                <field name="date"/>
-                <field name="nomenclature_id"/>
-                <field name="movement_type" widget="badge" 
-                       decoration-success="movement_type == 'in'"
-                       decoration-danger="movement_type == 'out'"
-                       decoration-info="movement_type in ['transfer_in', 'transfer_out']"
-                       decoration-warning="movement_type == 'adjustment'"/>
-                <field name="operation_type"/>
-                <field name="qty"/>
-                <field name="uom_id"/>
-                <field name="warehouse_from_id" string="Склад (з)" optional="hide"/>
-                <field name="warehouse_to_id" string="Склад (в)" optional="hide"/>
-                <field name="employee_from_id" string="Працівник (з)" optional="hide"/>
-                <field name="employee_to_id" string="Працівник (в)" optional="hide"/>
-                <field name="document_reference" optional="show"/>
-                <field name="batch_id" optional="hide"/>
-                <field name="user_id" optional="hide"/>
-                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
-            </list>
+            <form string="Управління серійними номерами">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_load_from_file" type="object" class="oe_stat_button" icon="fa-upload">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Завантажити з файлу</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <group>
+                        <group name="product_info">
+                            <field name="nomenclature_name" readonly="1"/>
+                            <field name="location_info" readonly="1"/>
+                            <field name="qty_on_hand" readonly="1"/>
+                        </group>
+                        <group name="statistics">
+                            <field name="total_serials_count" readonly="1"/>
+                            <field name="to_add_count" readonly="1" decoration-success="to_add_count &gt; 0"/>
+                            <field name="to_remove_count" readonly="1" decoration-danger="to_remove_count &gt; 0"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Попередження про перевищення -->
+                    <div class="alert alert-danger" role="alert" 
+                         invisible="total_serials_count &lt;= qty_on_hand">
+                        <i class="fa fa-exclamation-triangle"/> 
+                        <strong>Помилка!</strong> 
+                        Кількість серійних номерів (<field name="total_serials_count"/>) 
+                        перевищує фізичну кількість (<field name="qty_on_hand"/>)
+                    </div>
+                    
+                    <notebook>
+                        <page string="Існуючі серійні номери">
+                            <field name="serial_line_ids" nolabel="1">
+                                <list string="Серійні номери" editable="bottom">
+                                    <field name="serial_number" string="Серійний номер"/>
+                                    <field name="to_delete" string="Видалити" widget="boolean_toggle"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+                        <page string="Додати нові">
+                            <group>
+                                <field name="new_serials_text" widget="text" 
+                                       placeholder="Введіть серійні номери, розділені комою або новим рядком"/>
+                            </group>
+                            
+                            <div class="alert alert-info">
+                                <i class="fa fa-info-circle"/> 
+                                Ви можете ввести серійні номери вручну або завантажити з Excel файлу 
+                                за допомогою кнопки "Завантажити з файлу"
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_save_changes" string="Зберегти зміни" type="object" 
+                            class="btn-primary" invisible="total_serials_count &gt; qty_on_hand"/>
+                    <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
         </field>
     </record>
 
-   <!-- Замініть цей search view -->
-    <record id="stock_balance_movement_search_view" model="ir.ui.view">
-        <field name="name">stock.balance.movement.search</field>
-        <field name="model">stock.balance.movement</field>
+    <!-- Візард імпорту серійних номерів -->
+    <record id="view_stock_balance_serial_import_wizard_form" model="ir.ui.view">
+        <field name="name">stock.balance.serial.import.wizard.form</field>
+        <field name="model">stock.balance.serial.import.wizard</field>
         <field name="arch" type="xml">
-            <search string="Пошук рухів залишків">
-                <field name="nomenclature_id"/>
-                <field name="document_reference"/>
-                <field name="warehouse_from_id"/>
-                <field name="warehouse_to_id"/>
-                <field name="employee_from_id"/>
-                <field name="employee_to_id"/>
-                
-                <filter string="Надходження" name="movements_in" domain="[('movement_type', '=', 'in')]"/>
-                <filter string="Списання" name="movements_out" domain="[('movement_type', '=', 'out')]"/>
-                <filter string="Переміщення (в)" name="movements_transfer_in" domain="[('movement_type', '=', 'transfer_in')]"/>
-                <filter string="Переміщення (з)" name="movements_transfer_out" domain="[('movement_type', '=', 'transfer_out')]"/>
-                <filter string="Коригування" name="movements_adjustment" domain="[('movement_type', '=', 'adjustment')]"/>
-                
-                <separator/>
-                <filter string="Прихідні" name="receipts" domain="[('operation_type', '=', 'receipt')]"/>
-                <filter string="Акти оприходування" name="disposals" domain="[('operation_type', '=', 'disposal')]"/>
-                <filter string="Переміщення" name="transfers" domain="[('operation_type', '=', 'transfer')]"/>
-                <filter string="Коригування" name="adjustments" domain="[('operation_type', '=', 'adjustment')]"/>
-                
-                <separator/>
-                <filter string="Сьогодні" name="today" domain="[('date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('date', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
-                <filter string="Цей тиждень" name="this_week" domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
-                <filter string="Цей місяць" name="this_month" domain="[('date', '&gt;=', context_today().strftime('%Y-%m-01'))]"/>
-                
-                <group expand="0" string="Групування">
-                    <filter string="Номенклатура" name="group_nomenclature" context="{'group_by': 'nomenclature_id'}"/>
-                    <filter string="Тип руху" name="group_movement_type" context="{'group_by': 'movement_type'}"/>
-                    <filter string="Тип операції" name="group_operation_type" context="{'group_by': 'operation_type'}"/>
-                    <filter string="Дата" name="group_date" context="{'group_by': 'date'}"/>
-                    <filter string="Документ" name="group_document" context="{'group_by': 'document_reference'}"/>
-                    <filter string="Користувач" name="group_user" context="{'group_by': 'user_id'}"/>
+            <form string="Імпорт серійних номерів">
+                <group>
+                    <field name="file_data" filename="file_name" widget="binary"/>
+                    <field name="file_name" invisible="1"/>
+                    <field name="replace_existing"/>
                 </group>
-            </search>
+                
+                <div class="alert alert-info">
+                    <i class="fa fa-info-circle"/> 
+                    <strong>Формат файлу:</strong><br/>
+                    • Підтримуються файли .xls та .xlsx<br/>
+                    • Серійні номери мають бути в першій колонці (A)<br/>
+                    • Кожен серійний номер в окремому рядку
+                </div>
+                
+                <footer>
+                    <button name="action_import" string="Імпортувати" type="object" class="btn-primary"/>
+                    <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
         </field>
     </record>
 
-    <!-- Actions -->
+    <!-- ОНОВЛЕНІ ACTIONS -->
     <record id="action_stock_balance" model="ir.actions.act_window">
         <field name="name">Залишки товарів</field>
         <field name="res_model">stock.balance</field>
@@ -264,40 +358,8 @@
             </p>
             <p>
                 Залишки автоматично оновлюються при проведенні документів приходу та переміщень.
-                Ви можете переглянути залишки на складах та у працівників.
+                Для товарів з серійним обліком доступна кількість залежить від введених серійних номерів.
             </p>
         </field>
-    </record>
-
-    <record id="action_stock_balance_movement" model="ir.actions.act_window">
-        <field name="name">Рухи залишків</field>
-        <field name="res_model">stock.balance.movement</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="stock_balance_movement_search_view"/>
-        <field name="context">{'search_default_this_month': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Рухи залишків відображають всі операції!
-            </p>
-            <p>
-                Тут ви можете переглянути історію всіх рухів залишків:
-                надходження, списання, переміщення та коригування.
-            </p>
-        </field>
-    </record>
-
-    <!-- Analysis Actions -->
-    <record id="action_stock_balance_analysis" model="ir.actions.act_window">
-        <field name="name">Аналіз залишків</field>
-        <field name="res_model">stock.balance</field>
-        <field name="view_mode">graph,pivot</field>
-        <field name="context">{'search_default_with_qty': 1}</field>
-    </record>
-
-    <record id="action_stock_balance_movement_analysis" model="ir.actions.act_window">
-        <field name="name">Аналіз рухів залишків</field>
-        <field name="res_model">stock.balance.movement</field>
-        <field name="view_mode">graph,pivot</field>
-        <field name="context">{'search_default_this_month': 1}</field>
     </record>
 </odoo>

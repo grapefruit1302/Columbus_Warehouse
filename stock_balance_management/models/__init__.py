@@ -5,3 +5,4 @@ from . import stock_balance_integration
 from . import stock_balance_serial_wizard  
 from . import stock_serial_report      
 from . import stock_receipt_integration 
+from . import stock_balance_serial_detailed_wizard 
