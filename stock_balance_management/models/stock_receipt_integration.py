@@ -1,3 +1,5 @@
+# stock_balance_management/models/stock_receipt_integration.py
+
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import logging
@@ -9,14 +11,13 @@ class StockReceiptIncoming(models.Model):
     """Інтеграція з прихідними накладними"""
     _inherit = 'stock.receipt.incoming'
 
-    def action_confirm(self):
-        """Розширюємо метод підтвердження для оновлення залишків"""
-        _logger.info(f"Starting confirmation for receipt {self.number}")
+    def _do_posting(self, posting_time, custom_datetime=None):
+        """Розширюємо метод проведення для оновлення залишків"""
+        _logger.info(f"Starting posting for receipt {self.number}")
         
-        # Спочатку стандартне підтвердження
-        result = super().action_confirm()
+        result = super()._do_posting(posting_time, custom_datetime)
         
-        # Оновлюємо залишки для кожної позиції ПІСЛЯ підтвердження
+        # Оновлюємо залишки для кожної позиції ПІСЛЯ проведення
         _logger.info(f"Creating balance movements for receipt {self.number}")
         for line in self.line_ids:
             try:
@@ -26,6 +27,11 @@ class StockReceiptIncoming(models.Model):
                 _logger.error(f"Failed to create balance movement for {line.nomenclature_id.name}: {e}")
         
         return result
+
+    # ВИДАЛЯЄМО action_confirm - залишки створюються тільки при проведенні!
+    # def action_confirm(self):
+    #     """НЕ створюємо залишки при підтвердженні - вони вже створені при проведенні"""
+    #     return super().action_confirm()
 
     def _create_balance_movement_for_line(self, line):
         """Створює рух залишків для позиції накладної"""
@@ -46,6 +52,17 @@ class StockReceiptIncoming(models.Model):
         _logger.info(f"Found batch for {line.nomenclature_id.name}: {batch.batch_number if batch else 'None'}")
         
         try:
+            # ВИПРАВЛЯЄМО передачу серійних номерів
+            # Перевіряємо наявність серійних номерів незалежно від tracking_serial
+            serial_numbers_to_pass = None
+            if line.serial_numbers and line.serial_numbers.strip():
+                # Додатково перевіряємо чи товар має облік по S/N
+                if line.nomenclature_id.tracking_serial:
+                    serial_numbers_to_pass = line.serial_numbers
+                    _logger.info(f"Passing serial numbers for {line.nomenclature_id.name}: {serial_numbers_to_pass}")
+                else:
+                    _logger.warning(f"Serial numbers found but tracking_serial is False for {line.nomenclature_id.name}")
+            
             # Створюємо рух залишків
             movement = self.env['stock.balance.movement'].create_movement(
                 nomenclature_id=line.nomenclature_id.id,
@@ -59,7 +76,7 @@ class StockReceiptIncoming(models.Model):
                 uom_id=line.selected_uom_id.id or line.product_uom_id.id,
                 document_reference=self.number,
                 notes=f'Прихідна накладна {self.number}',
-                serial_numbers=line.serial_numbers if line.tracking_serial else None,
+                serial_numbers=serial_numbers_to_pass,  # Передаємо виправлені серійні номери
                 company_id=self.company_id.id,
                 date=self.posting_datetime,
             )
@@ -89,14 +106,13 @@ class StockReceiptDisposal(models.Model):
     """Інтеграція з актами оприходування"""
     _inherit = 'stock.receipt.disposal'
 
-    def action_confirm(self):
-        """Розширюємо метод підтвердження для оновлення залишків"""
-        _logger.info(f"Starting confirmation for disposal {self.number}")
+    def _do_posting(self, posting_time, custom_datetime=None):
+        """Розширюємо метод проведення для оновлення залишків"""
+        _logger.info(f"Starting posting for disposal {self.number}")
         
-        # Спочатку стандартне підтвердження
-        result = super().action_confirm()
+        result = super()._do_posting(posting_time, custom_datetime)
         
-        # Оновлюємо залишки для кожної позиції ПІСЛЯ підтвердження
+        # Оновлюємо залишки для кожної позиції ПІСЛЯ проведення
         _logger.info(f"Creating balance movements for disposal {self.number}")
         for line in self.line_ids:
             try:
@@ -106,6 +122,11 @@ class StockReceiptDisposal(models.Model):
                 _logger.error(f"Failed to create balance movement for {line.nomenclature_id.name}: {e}")
         
         return result
+
+    # ВИДАЛЯЄМО action_confirm - залишки створюються тільки при проведенні!
+    # def action_confirm(self):
+    #     """НЕ створюємо залишки при підтвердженні - вони вже створені при проведенні"""
+    #     return super().action_confirm()
 
     def _create_balance_movement_for_line(self, line):
         """Створює рух залишків для позиції акта"""
@@ -126,6 +147,15 @@ class StockReceiptDisposal(models.Model):
         _logger.info(f"Found batch for {line.nomenclature_id.name}: {batch.batch_number if batch else 'None'}")
         
         try:
+            # ВИПРАВЛЯЄМО передачу серійних номерів
+            serial_numbers_to_pass = None
+            if line.serial_numbers and line.serial_numbers.strip():
+                if line.nomenclature_id.tracking_serial:
+                    serial_numbers_to_pass = line.serial_numbers
+                    _logger.info(f"Passing serial numbers for {line.nomenclature_id.name}: {serial_numbers_to_pass}")
+                else:
+                    _logger.warning(f"Serial numbers found but tracking_serial is False for {line.nomenclature_id.name}")
+            
             # Створюємо рух залишків
             movement = self.env['stock.balance.movement'].create_movement(
                 nomenclature_id=line.nomenclature_id.id,
@@ -139,7 +169,7 @@ class StockReceiptDisposal(models.Model):
                 uom_id=line.selected_uom_id.id or line.product_uom_id.id,
                 document_reference=self.number,
                 notes=f'Акт оприходування {self.number}',
-                serial_numbers=line.serial_numbers if line.tracking_serial else None,
+                serial_numbers=serial_numbers_to_pass,  # Передаємо виправлені серійні номери
                 company_id=self.company_id.id,
                 date=self.posting_datetime,
             )
