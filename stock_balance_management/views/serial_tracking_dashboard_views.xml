@@ -1,0 +1,88 @@
+<odoo>
+    <data>
+        <!-- Dashboard List View -->
+        <record id="serial_tracking_report_list_view" model="ir.ui.view">
+            <field name="name">serial.tracking.report.list</field>
+            <field name="model">serial.tracking.report</field>
+            <field name="arch" type="xml">
+                <list string="Відстеження введення серійних номерів" create="false" edit="false">
+                    <field name="nomenclature_name"/>
+                    <field name="warehouse_name"/>
+                    <field name="batch_number"/>
+                    <field name="qty_physical"/>
+                    <field name="qty_serial_entered"/>
+                    <field name="completion_percentage" widget="progressbar"/>
+                    <field name="status" widget="badge" 
+                           decoration-danger="status == 'not_started'"
+                           decoration-warning="status == 'in_progress'"
+                           decoration-success="status == 'completed'"
+                           decoration-info="status == 'overserial'"/>
+                    <field name="last_update"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Search View -->
+        <record id="serial_tracking_report_search_view" model="ir.ui.view">
+            <field name="name">serial.tracking.report.search</field>
+            <field name="model">serial.tracking.report</field>
+            <field name="arch" type="xml">
+                <search string="Пошук">
+                    <field name="nomenclature_name"/>
+                    <field name="warehouse_name"/>
+                    <field name="batch_number"/>
+                    
+                    <filter string="Не розпочато" name="not_started" 
+                            domain="[('status', '=', 'not_started')]"/>
+                    <filter string="В процесі" name="in_progress" 
+                            domain="[('status', '=', 'in_progress')]"/>
+                    <filter string="Завершено" name="completed" 
+                            domain="[('status', '=', 'completed')]"/>
+                    <filter string="Проблемні" name="overserial" 
+                            domain="[('status', '=', 'overserial')]"/>
+                    
+                    <separator/>
+                    <filter string="Готовність &lt; 50%" name="low_completion" 
+                            domain="[('completion_percentage', '&lt;', 50)]"/>
+
+                    <filter string="Готовність 50-90%" name="medium_completion" 
+                            domain="[('completion_percentage', '&gt;=', 50), ('completion_percentage', '&lt;', 90)]"/>
+                            
+                    <filter string="Готовність >= 90%" name="high_completion" 
+                            domain="[('completion_percentage', '>=', 90)]"/>
+                    
+                    <group expand="0" string="Групування">
+                        <filter string="Статус" name="group_status" context="{'group_by': 'status'}"/>
+                        <filter string="Склад" name="group_warehouse" context="{'group_by': 'warehouse_name'}"/>
+                        <filter string="Товар" name="group_product" context="{'group_by': 'nomenclature_name'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Action -->
+        <record id="action_serial_tracking_dashboard" model="ir.actions.act_window">
+            <field name="name">Відстеження введення серійних номерів</field>
+            <field name="res_model">serial.tracking.report</field>
+            <field name="view_mode">list</field>
+            <field name="search_view_id" ref="serial_tracking_report_search_view"/>
+            <field name="context">{'search_default_not_started': 1, 'search_default_in_progress': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Відстеження прогресу введення серійних номерів!
+                </p>
+                <p>
+                    Тут ви можете бачити, для яких товарів серійні номери ще не введені або введені частково.
+                    Це допомагає логістам та менеджерам відстежувати прогрес роботи.
+                </p>
+            </field>
+        </record>
+
+        <!-- Menu -->
+        <menuitem id="menu_serial_tracking_dashboard" 
+                  name="Відстеження серійних номерів" 
+                  parent="stock_balance_management.menu_stock_balance_management" 
+                  action="action_serial_tracking_dashboard" 
+                  sequence="30"/>
+    </data>
+</odoo>
