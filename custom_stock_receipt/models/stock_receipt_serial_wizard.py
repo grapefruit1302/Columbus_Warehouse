@@ -1,25 +1,20 @@
-import logging
-import base64
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
-import xlrd
-from openpyxl import load_workbook
-import io
+import logging
 
 _logger = logging.getLogger(__name__)
 
 class StockReceiptSerialWizard(models.TransientModel):
     _name = 'stock.receipt.serial.wizard'
-    _description = 'Введення серійних номерів'
+    _description = 'Wizard для введення серійних номерів'
 
-    receipt_id = fields.Many2one('stock.receipt.incoming', 'Документ', required=True)
-    selected_line_id = fields.Many2one('stock.receipt.incoming.line', 'Позиція',
-                                     required=True, domain="[('receipt_id', '=', receipt_id), ('tracking_serial', '=', True)]")
-    serial_line_ids = fields.One2many('stock.receipt.serial.wizard.serial', 'wizard_id', 'Серійні номери')
-    selected_product_name = fields.Char('Обраний товар', related='selected_line_id.product_name', readonly=True)
-    selected_qty = fields.Float('Необхідна кількість', related='selected_line_id.qty', readonly=True)
-    current_serial_count = fields.Integer('Введено S/N', compute='_compute_current_serial_count')
-    warning_message = fields.Char('Попередження', readonly=True)
+    warning_message = fields.Text('Попередження', readonly=True)
+    receipt_id = fields.Many2one('stock.receipt.incoming', 'Прихідна накладна', required=True)
+    selected_line_id = fields.Many2one('stock.receipt.incoming.line', 'Обрана позиція', required=True)
+    selected_product_name = fields.Char('Назва товару', related='selected_line_id.nomenclature_id.name', readonly=True)
+    selected_qty = fields.Float('Кількість', related='selected_line_id.qty', readonly=True)
+    current_serial_count = fields.Integer('Поточна кількість S/N', compute='_compute_current_serial_count')
+    serial_line_ids = fields.One2many('stock.receipt.serial.wizard.serial', 'wizard_id', 'Серійні номери')  # ✅ ВИПРАВЛЕНО назву
 
     @api.depends('serial_line_ids')
     def _compute_current_serial_count(self):
@@ -29,79 +24,129 @@ class StockReceiptSerialWizard(models.TransientModel):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
-        receipt_id = self.env.context.get('default_receipt_id')
         line_id = self.env.context.get('default_selected_line_id')
-        warning_message = self.env.context.get('warning_message')
-
-        if receipt_id and line_id:
-            res['receipt_id'] = receipt_id
-            res['selected_line_id'] = line_id
-            if warning_message:
-                res['warning_message'] = warning_message
+        
+        if line_id:
             line = self.env['stock.receipt.incoming.line'].browse(line_id)
+            res['receipt_id'] = line.receipt_id.id
+            res['selected_line_id'] = line_id
+            
             if line.serial_numbers:
-                serials = [s.strip() for s in line.serial_numbers.splitlines() if s.strip()]
-                res['serial_line_ids'] = [(0, 0, {'serial_number': serial}) for serial in serials]
+                existing_serials = []
+                for line_text in line.serial_numbers.split('\n'):
+                    for serial in line_text.split(','):
+                        serial = serial.strip()
+                        if serial:
+                            existing_serials.append(serial)
+                
+                res['serial_line_ids'] = [(0, 0, {'serial_number': serial}) for serial in existing_serials]
         
         return res
-    
-    def action_load_from_file(self):
-        if not self.selected_line_id:
-            raise UserError('Спочатку оберіть товар для введення серійних номерів!')
-            
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'stock.receipt.serial.import.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_parent_wizard_id': self.id,
-                'default_selected_line_id': self.selected_line_id.id,
-            }
-        }
-    
-    def _get_duplicate_serials(self):
-        """Повертає список дублікатів серійних номерів"""
-        serials = [line.serial_number for line in self.serial_line_ids if line.serial_number]
-        duplicates = [s for s in serials if serials.count(s) > 1]
-        return list(set(duplicates))
-    
-    def _validate_serial_numbers(self):
-        serials = [line.serial_number for line in self.serial_line_ids if line.serial_number]
-        
-        duplicates = self._get_duplicate_serials()
-        if duplicates:
-            # Відкриваємо візард для обробки дублікатів
-            return {
-                'type': 'ir.actions.act_window',
-                'res_model': 'stock.receipt.serial.duplicate.wizard',
-                'view_mode': 'form',
-                'target': 'new',
-                'context': {
-                    'default_parent_wizard_id': self.id,
-                    'default_duplicates': ', '.join(duplicates),
-                }
-            }
-        
-        if self.selected_line_id and len(serials) > int(self.selected_line_id.qty):
-            raise ValidationError(
-                f'Кількість серійних номерів ({len(serials)}) не може перевищувати кількість товару ({int(self.selected_line_id.qty)})'
-            )
-        
-        return True
-    
+
     def action_save_and_close(self):
+        """Зберігає серійні номери та оновлює залишки"""
         self.ensure_one()
         validation_result = self._validate_serial_numbers()
         
-        # Якщо валідація повернула дію (візард дублікатів), виконуємо її
         if isinstance(validation_result, dict) and validation_result.get('type') == 'ir.actions.act_window':
             return validation_result
         
-        # Якщо валідація пройшла успішно, зберігаємо
+        # Зберігаємо серійні номери в рядку документа
         serials = [line.serial_number for line in self.serial_line_ids if line.serial_number]
-        self.selected_line_id.serial_numbers = '\n'.join(serials)
+        serial_numbers_text = '\n'.join(serials)
+        
+        _logger.info(f"🔧 Saving serial numbers to line: '{serial_numbers_text}'")
+        self.selected_line_id.serial_numbers = serial_numbers_text
+        
+        # ✅ ДОДАЄМО: Оновлення серійних номерів в залишках
+        self._update_balance_serial_numbers(serial_numbers_text)
+        
         return {'type': 'ir.actions.act_window_close'}
+
+    def _update_balance_serial_numbers(self, serial_numbers_text):
+        """Оновлює серійні номери в відповідних залишках"""
+        _logger.info(f"🔄 Updating balance serial numbers for receipt {self.receipt_id.number}")
+        
+        # Знаходимо всі залишки створені з цього документа
+        balances = self.env['stock.balance'].search([
+            ('nomenclature_id', '=', self.selected_line_id.nomenclature_id.id),
+            ('location_type', '=', 'warehouse'),
+            ('warehouse_id', '=', self.receipt_id.warehouse_id.id),
+        ])
+        
+        _logger.info(f"📊 Found {len(balances)} balance records")
+        
+        for balance in balances:
+            # Знаходимо відповідний рух залишків
+            movement = self.env['stock.balance.movement'].search([
+                ('nomenclature_id', '=', self.selected_line_id.nomenclature_id.id),
+                ('document_reference', '=', self.receipt_id.number),
+                ('operation_type', '=', 'receipt'),
+            ], limit=1)
+            
+            if movement:
+                _logger.info(f"🎯 Updating balance ID: {balance.id}")
+                _logger.info(f"📝 Old serial_numbers: '{balance.serial_numbers}'")
+                _logger.info(f"📝 New serial_numbers: '{serial_numbers_text}'")
+                
+                # Оновлюємо серійні номери в залишках
+                balance.write({
+                    'serial_numbers': serial_numbers_text,
+                    'last_update': fields.Datetime.now(),
+                })
+                
+                # Також оновлюємо в русі залишків
+                movement.write({
+                    'serial_numbers': serial_numbers_text,
+                })
+                
+                _logger.info(f"✅ Balance updated successfully!")
+                
+                # Надсилаємо повідомлення в чат документа
+                self.receipt_id.message_post(
+                    body=_('🔢 Оновлено серійні номери для %s: %s') % (
+                        self.selected_line_id.nomenclature_id.name,
+                        serial_numbers_text.replace('\n', ', ')
+                    ),
+                    message_type='notification'
+                )
+                
+                return True
+        
+        _logger.warning(f"⚠️ No balance found to update for {self.selected_line_id.nomenclature_id.name}")
+        return False
+
+    def _validate_serial_numbers(self):
+        """Валідація серійних номерів"""
+        serials = [line.serial_number for line in self.serial_line_ids if line.serial_number]
+        
+        if not serials:
+            return True
+        
+        # Перевірка на дублікати
+        unique_serials = list(set(serials))
+        if len(serials) != len(unique_serials):
+            duplicates = [serial for serial in serials if serials.count(serial) > 1]
+            raise ValidationError(f'Знайдено дублікати серійних номерів: {", ".join(set(duplicates))}')
+        
+        # Перевірка на існування в системі
+        existing_serials = self.env['stock.balance'].search([
+            ('serial_numbers', 'ilike', serials[0]),
+            ('id', '!=', False)
+        ])
+        
+        conflicts = []
+        for balance in existing_serials:
+            if balance.serial_numbers:
+                balance_serials = balance._get_serial_numbers_list()
+                for serial in serials:
+                    if serial in balance_serials and balance.nomenclature_id.id != self.selected_line_id.nomenclature_id.id:
+                        conflicts.append(f"{serial} (вже в {balance.nomenclature_id.name})")
+        
+        if conflicts:
+            raise ValidationError(f'Серійні номери вже використовуються:\n{chr(10).join(conflicts)}')
+        
+        return True
 
     def remove_duplicates(self):
         """Видаляє дублікати серійних номерів"""
@@ -121,122 +166,13 @@ class StockReceiptSerialWizard(models.TransientModel):
         
         return len(serials) - len(unique_serials)  # Повертаємо кількість видалених дублікатів
 
+    def action_load_from_file(self):
+        """Завантаження серійних номерів з файлу (заглушка)"""
+        raise UserError(_('Функція завантаження з файлу поки не реалізована'))
+
 class StockReceiptSerialWizardLine(models.TransientModel):
-    _name = 'stock.receipt.serial.wizard.line'
+    _name = 'stock.receipt.serial.wizard.serial'  # ✅ ВИПРАВЛЕНО назву відповідно до XML
     _description = 'Лінія товарів з серійними номерами'
  
     wizard_id = fields.Many2one('stock.receipt.serial.wizard', 'Wizard', required=True, ondelete='cascade')
-    line_id = fields.Many2one('stock.receipt.incoming.line', 'Позиція', required=True)
-    product_name = fields.Char('Модель', related='line_id.product_name', readonly=True)
-    qty = fields.Float('К-ть', related='line_id.qty', readonly=True)
-    current_serial_count = fields.Integer('Введено S/N', help='Поточна кількість введених S/N')
-    
-    def action_select_line(self):
-        return self.wizard_id.action_select_line(self.line_id)
-
-class StockReceiptSerialWizardSerial(models.TransientModel):
-    _name = 'stock.receipt.serial.wizard.serial'
-    _description = 'Серійний номер'
-    
-    wizard_id = fields.Many2one('stock.receipt.serial.wizard', 'Wizard', required=True, ondelete='cascade')
     serial_number = fields.Char('Серійний номер', required=True)
-
-class StockReceiptSerialDuplicateWizard(models.TransientModel):
-    _name = 'stock.receipt.serial.duplicate.wizard'
-    _description = 'Обробка дублікатів серійних номерів'
-    
-    parent_wizard_id = fields.Many2one('stock.receipt.serial.wizard', 'Основний wizard', required=True)
-    duplicates = fields.Char('Дублікати', readonly=True)
-    
-    def action_remove_duplicates(self):
-        """Видаляє дублікати та повертає до основного візарда"""
-        self.ensure_one()
-        
-        removed_count = self.parent_wizard_id.remove_duplicates()
-        
-        # Повертаємо до основного візарда з повідомленням
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'stock.receipt.serial.wizard',
-            'view_mode': 'form',
-            'res_id': self.parent_wizard_id.id,
-            'target': 'new',
-            'context': {
-                'default_warning_message': f'Видалено {removed_count} дублікатів серійних номерів. Тепер можна зберегти дані.',
-            }
-        }
-
-class StockReceiptSerialImportWizard(models.TransientModel):
-    _name = 'stock.receipt.serial.import.wizard'
-    _description = 'Імпорт серійних номерів'
-    
-    parent_wizard_id = fields.Many2one('stock.receipt.serial.wizard', 'Основний wizard')
-    selected_line_id = fields.Many2one('stock.receipt.incoming.line', 'Обрана позиція')
-    file_data = fields.Binary('Excel файл', required=True)
-    file_name = fields.Char('Назва файлу')
-    
-    def action_import(self):
-        """Імпортує серійні номери з файлу (.xls або .xlsx)"""
-        self.ensure_one()
-        
-        if not self.file_data:
-            raise UserError('Будь ласка, оберіть файл!')
-        
-        try:
-            file_content = base64.b64decode(self.file_data)
-            file_name = self.file_name.lower() if self.file_name else ''
-
-            serials = []
-            if file_name.endswith('.xls'):
-                workbook = xlrd.open_workbook(file_contents=file_content)
-                sheet = workbook.sheet_by_index(0)
-                for row in range(sheet.nrows):
-                    cell_value = sheet.cell_value(row, 0)
-                    if cell_value:
-                        if isinstance(cell_value, (int, float)) and cell_value.is_integer():
-                            serials.append(str(int(cell_value)))
-                        else:
-                            serials.append(str(cell_value).strip())
-            elif file_name.endswith('.xlsx'):
-                workbook = load_workbook(filename=io.BytesIO(file_content))
-                sheet = workbook.active
-                for row in sheet.iter_rows(min_col=1, max_col=1, values_only=True):
-                    cell_value = row[0]
-                    if cell_value:
-                        if isinstance(cell_value, (int, float)) and cell_value.is_integer():
-                            serials.append(str(int(cell_value)))
-                        else:
-                            serials.append(str(cell_value).strip())
-            else:
-                raise UserError('Підтримуються лише файли форматів .xls або .xlsx!')
-
-            serials = [s for s in serials if s]
-            existing_serials = [line.serial_number for line in self.parent_wizard_id.serial_line_ids]
-            all_serials = existing_serials + serials
-            unique_serials = list(dict.fromkeys(all_serials))
-            
-            self.parent_wizard_id.serial_line_ids = [(5, 0, 0)]
-            serial_lines = [(0, 0, {'serial_number': serial}) for serial in unique_serials]
-            self.parent_wizard_id.serial_line_ids = serial_lines
-            
-            action = {
-                'type': 'ir.actions.act_window',
-                'res_model': 'stock.receipt.serial.wizard',
-                'view_mode': 'form',
-                'res_id': self.parent_wizard_id.id,
-                'target': 'new',
-                'context': self.env.context,
-            }
-            
-            max_qty = int(self.selected_line_id.qty) if self.selected_line_id else 0
-            if len(unique_serials) > max_qty:
-                self.parent_wizard_id.warning_message = (
-                    f'Імпортовано {len(unique_serials)} серійних номерів, '
-                    f'але кількість товару становить {max_qty}. '
-                    'Будь ласка, видаліть зайві серійні номери перед збереженням.'
-                )
-            
-            return action
-        
-        except Exception as e:
-            raise UserError(f'Помилка читання файлу: {str(e)}')
