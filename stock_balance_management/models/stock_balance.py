@@ -17,6 +17,12 @@ class StockBalance(models.Model):
         required=True,
         index=True
     )
+
+    serial_count = fields.Integer(
+        'Кількість серійних номерів', 
+        compute='_compute_serial_count',
+        help='Кількість серійних номерів у цьому залишку'
+    )
     
     # Локація може бути складом або працівником
     location_type = fields.Selection([
@@ -115,28 +121,131 @@ class StockBalance(models.Model):
          'Повинна бути вказана або локація складу, або працівник, але не обидва!'),
     ]
 
+
+    @api.depends('serial_numbers')
+    def _compute_serial_count(self):
+        """Підраховує кількість серійних номерів"""
+        for balance in self:
+            balance.serial_count = len(balance._get_serial_numbers_list())
+
+    @api.depends('serial_numbers', 'batch_id')
+    @api.depends('serial_numbers')
+    def _compute_serial_lines(self):
+        """Створює тимчасові записи для відображення серійних номерів"""
+        for balance in self:
+            # Видаляємо існуючі записи
+            balance.serial_line_ids.unlink()
+            
+            if balance.serial_numbers:
+                serials = balance._get_serial_numbers_list()
+                lines_to_create = []
+                
+                for serial in serials:
+                    lines_to_create.append({
+                        'balance_id': balance.id,
+                        'serial_number': serial,
+                        'batch_number': balance.batch_id.batch_number if balance.batch_id else '',
+                        'document_reference': balance.batch_id.source_document_number if balance.batch_id else '',
+                        'source_document_type': self._get_doc_type_display(balance.batch_id.source_document_type) if balance.batch_id else '',
+                        'date_created': balance.batch_id.date_created if balance.batch_id else False,
+                    })
+                
+                # Створюємо нові записи
+                for line_data in lines_to_create:
+                    self.env['stock.balance.serial.line'].create(line_data)
+
+    # ДОДАЙТЕ ці методи:
+    def _get_doc_type_display(self, doc_type):
+        """Перекладає тип документу"""
+        mapping = {
+            'receipt': 'Прихідна накладна',
+            'inventory': 'Акт оприходування', 
+            'return': 'Повернення з сервісу',
+        }
+        return mapping.get(doc_type, doc_type or '')
+
+    # ДОДАЙТЕ поле:
+    serial_count = fields.Integer(
+        'Кількість S/N', 
+        compute='_compute_serial_count',
+        help='Кількість серійних номерів'
+    )
+
+
+    def action_view_serials(self):
+        """Швидкий перегляд серійних номерів з списку"""
+        self.ensure_one()
+        
+        if not self.serial_numbers:
+            raise UserError(_('У цього залишку немає серійних номерів для відображення.'))
+        
+        # Відкриваємо форму залишку
+        return {
+            'name': _('Серійні номери: %s') % self.nomenclature_id.name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.balance',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
+
+    @api.depends('serial_numbers')
+    def _compute_serial_count(self):
+        """Підраховує кількість серійних номерів"""
+        for balance in self:
+            balance.serial_count = len(balance._get_serial_numbers_list())
+
+    def _get_serial_info(self, serial_number):
+        """Отримує додаткову інформацію про серійний номер"""
+        result = {
+            'batch_number': '',
+            'document_reference': '',
+            'source_document_type': '',
+            'date_created': False,
+        }
+        
+        # Якщо є партія, отримуємо інформацію з неї
+        if self.batch_id:
+            batch = self.batch_id
+            result.update({
+                'batch_number': batch.batch_number,
+                'document_reference': batch.source_document_number or '',
+                'date_created': batch.date_created,
+            })
+            
+            # Перекладаємо тип документу
+            doc_type_mapping = {
+                'receipt': 'Прихідна накладна',
+                'inventory': 'Акт оприходування', 
+                'return': 'Повернення з сервісу',
+            }
+            result['source_document_type'] = doc_type_mapping.get(
+                batch.source_document_type, batch.source_document_type or ''
+            )
+        
+        return result
+
+    def _get_serial_numbers_list(self):
+        """Повертає список серійних номерів (виправлений метод)"""
+        if not self.serial_numbers:
+            return []
+        
+        serials = []
+        # Розділяємо по новому рядку, потім по комі
+        for line in self.serial_numbers.split('\n'):
+            for serial in line.split(','):
+                serial = serial.strip()
+                if serial:  # Ігноруємо порожні рядки
+                    serials.append(serial)
+        return serials
+
     @api.depends('qty_on_hand')
     def _compute_available_qty(self):
         """Поки що доступна кількість = фізичній (без резервування)"""
         for balance in self:
             balance.qty_available = balance.qty_on_hand
 
-    @api.depends('serial_numbers')
-    def _compute_serial_lines(self):
-        """Створює тимчасові записи для відображення серійних номерів"""
-        for balance in self:
-            # Очищаємо попередні записи
-            balance.serial_line_ids = [(5, 0, 0)]
-            
-            if balance.serial_numbers:
-                serials = balance._get_serial_numbers_list()
-                line_vals = []
-                for serial in serials:
-                    line_vals.append((0, 0, {
-                        'serial_number': serial,
-                        'balance_id': balance.id,
-                    }))
-                balance.serial_line_ids = line_vals
 
     def _get_serial_numbers_list(self):
         """Повертає список серійних номерів"""
@@ -368,10 +477,13 @@ class StockBalance(models.Model):
         }
 
 
-# ДОДАЄМО модель для відображення серійних номерів
 class StockBalanceSerialLine(models.TransientModel):
     _name = 'stock.balance.serial.line'
     _description = 'Серійний номер у залишках'
 
     balance_id = fields.Many2one('stock.balance', 'Залишок', required=True, ondelete='cascade')
     serial_number = fields.Char('Серійний номер', required=True)
+    batch_number = fields.Char('Партія')
+    document_reference = fields.Char('Документ')
+    source_document_type = fields.Char('Тип документу')
+    date_created = fields.Datetime('Дата створення')

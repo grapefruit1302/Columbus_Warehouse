@@ -5,46 +5,36 @@
         <field name="name">stock.balance.form</field>
         <field name="model">stock.balance</field>
         <field name="arch" type="xml">
-            <form string="Залишок товару" create="false" edit="false">
+            <form string="Залишки товарів" create="false" edit="false">
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="action_view_movements" type="object" class="oe_stat_button" icon="fa-exchange">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_text">Рухи</span>
-                            </div>
-                        </button>
+                    <div class="oe_title">
+                        <h1><field name="nomenclature_id" readonly="1"/></h1>
                     </div>
                     
                     <group>
-                        <group name="product_info">
-                            <field name="nomenclature_id" readonly="1"/>
-                            <field name="uom_id" readonly="1"/>
+                        <group>
+                            <field name="location_type" widget="radio" readonly="1"/>
+                            <field name="warehouse_id" invisible="location_type != 'warehouse'" readonly="1"/>
+                            <field name="employee_id" invisible="location_type != 'employee'" readonly="1"/>
                             <field name="batch_id" readonly="1"/>
                         </group>
-                        <group name="quantities">
+                        <group>
                             <field name="qty_on_hand" readonly="1"/>
                             <field name="qty_available" readonly="1"/>
-                        </group>
-                    </group>
-                    
-                    <group>
-                        <group name="location_info">
-                            <field name="location_type" readonly="1"/>
-                            <field name="warehouse_id" readonly="1" invisible="location_type != 'warehouse'"/>
-                            <field name="location_id" readonly="1" invisible="location_type != 'warehouse'"/>
-                            <field name="employee_id" readonly="1" invisible="location_type != 'employee'"/>
-                        </group>
-                        <group name="meta_info">
-                            <field name="company_id" readonly="1"/>
+                            <field name="uom_id" readonly="1"/>
+                            <field name="serial_count" readonly="1"/>
                             <field name="last_update" readonly="1"/>
                         </group>
                     </group>
-                    
-                    <!-- ІНФОРМАТИВНА ТАБЛИЦЯ СЕРІЙНИХ НОМЕРІВ -->
-                    <group string="Серійні номери" invisible="not serial_numbers">
+
+                    <group string="Серійні номери">
                         <field name="serial_line_ids" nolabel="1">
                             <list string="Серійні номери" create="false" edit="false" delete="false">
                                 <field name="serial_number" string="Серійний номер"/>
+                                <field name="batch_number" string="Партія" optional="show"/>
+                                <field name="document_reference" string="Документ" optional="show"/>
+                                <field name="source_document_type" string="Тип документу" optional="show"/>
+                                <field name="date_created" string="Дата" widget="datetime" optional="hide"/>
                             </list>
                         </field>
                     </group>
@@ -58,18 +48,46 @@
         <field name="name">stock.balance.list</field>
         <field name="model">stock.balance</field>
         <field name="arch" type="xml">
-            <list string="Залишки товарів" default_order="nomenclature_id, location_type, warehouse_id, employee_id" create="false" edit="false">
+            <list string="Залишки товарів" default_order="nomenclature_id, location_type, warehouse_id, employee_id" 
+                create="false" edit="false">
+                
                 <field name="nomenclature_id"/>
+                
                 <field name="location_type" widget="badge" 
-                       decoration-info="location_type == 'warehouse'"
-                       decoration-warning="location_type == 'employee'"/>
-                <field name="warehouse_id" optional="show"/>
-                <field name="employee_id" optional="show"/>
+                    decoration-info="location_type == 'warehouse'"
+                    decoration-warning="location_type == 'employee'"/>
+                    
+                <field name="warehouse_id" optional="show" 
+                    invisible="location_type != 'warehouse'"/>
+                    
+                <field name="employee_id" optional="show" 
+                    invisible="location_type != 'employee'"/>
+                    
                 <field name="batch_id" optional="hide"/>
-                <field name="qty_on_hand" sum="Всього фізично"/>
-                <field name="qty_available" sum="Всього доступно"/>
+                
+                <field name="qty_on_hand" sum="Всього фізично" 
+                    decoration-danger="qty_on_hand &lt;= 0"/>
+                    
+                <field name="qty_available" sum="Всього доступно" 
+                    decoration-warning="qty_available &lt;= 0"/>
+                    
                 <field name="uom_id"/>
-                <field name="last_update" optional="hide"/>
+                
+                <!-- Індикатор серійних номерів і кнопка перегляду -->
+                <field name="serial_numbers" invisible="1"/>
+                <field name="serial_count" string="S/N" 
+                    decoration-info="serial_count > 0"
+                    decoration-muted="serial_count == 0"/>
+                
+                <!-- Кнопка для перегляду серійних номерів -->
+                <button name="action_view_serials" type="object" 
+                        string="Переглянути S/N" 
+                        icon="fa-barcode" 
+                        class="btn btn-sm btn-primary"
+                        invisible="serial_count == 0"
+                        title="Переглянути серійні номери"/>
+                
+                <field name="last_update" optional="hide" widget="datetime"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
         </field>
