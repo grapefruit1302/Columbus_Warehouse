@@ -13,7 +13,7 @@
                     
                     <group>
                         <group>
-                            <field name="location_type" widget="radio" readonly="1"/>
+                            <field name="location_type" widget="text" readonly="1"/>
                             <field name="warehouse_id" invisible="location_type != 'warehouse'" readonly="1"/>
                             <field name="employee_id" invisible="location_type != 'employee'" readonly="1"/>
                             <field name="batch_id" readonly="1"/>

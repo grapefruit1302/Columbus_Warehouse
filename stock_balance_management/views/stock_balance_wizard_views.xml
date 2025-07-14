@@ -71,7 +71,7 @@
                             <field name="batch_id" domain="[('nomenclature_id', '=', nomenclature_id)]"/>
                         </group>
                         <group name="location_info">
-                            <field name="location_type" required="1"/>
+                            <field name="location_type_display" readonly="1"/>
                             <field name="warehouse_id" 
                                    invisible="location_type != 'warehouse'"
                                    required="location_type == 'warehouse'"/>
