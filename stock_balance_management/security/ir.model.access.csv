@@ -9,3 +9,5 @@ access_stock_balance_serial_line,stock.balance.serial.line,model_stock_balance_s
 access_stock_serial_report,stock.serial.report,model_stock_serial_report,stock.group_stock_user,1,0,0,0
 access_stock_balance_serial_line_user,stock.balance.serial.line user,model_stock_balance_serial_line,base.group_user,1,1,1,1
 access_stock_balance_serial_line_manager,stock.balance.serial.line manager,model_stock_balance_serial_line,base.group_system,1,1,1,1
+access_stock_serial_report_user,stock.serial.report user,model_stock_serial_report,stock.group_stock_user,1,0,0,0
+access_stock_serial_report_manager,stock.serial.report manager,model_stock_serial_report,stock.group_stock_manager,1,0,0,0
