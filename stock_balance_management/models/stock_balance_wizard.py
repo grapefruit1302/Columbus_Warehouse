@@ -180,22 +180,6 @@ class StockBalanceAdjustmentWizard(models.TransientModel):
         ('employee', 'Працівник'),
     ], 'Тип локації', required=True, default='warehouse')
 
-    location_type_display = fields.Char(
-        string='Тип локації',
-        compute='_compute_location_type_display',
-        store=False
-    )
-
-    @api.depends('location_type')
-    def _compute_location_type_display(self):
-        for rec in self:
-            if rec.location_type == 'warehouse':
-                rec.location_type_display = 'Склад'
-            elif rec.location_type == 'employee':
-                rec.location_type_display = 'Працівник'
-            else:
-                rec.location_type_display = ''
-
     warehouse_id = fields.Many2one(
         'stock.warehouse',
         'Склад',

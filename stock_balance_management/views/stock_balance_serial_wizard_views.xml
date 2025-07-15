@@ -1,311 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- ПОКРАЩЕНИЙ звіт по серійних номерах - Form View -->
-        <record id="view_stock_serial_report_form" model="ir.ui.view">
-            <field name="name">stock.serial.report.form</field>
-            <field name="model">stock.serial.report</field>
-            <field name="arch" type="xml">
-                <form string="Детальна інформація серійного номера" create="false" edit="false">
-                    <header>
-                        <button name="action_view_balance_details" string="Переглянути залишок" 
-                                type="object" class="btn-primary" icon="fa-cubes"/>
-                        <button name="action_view_batch_details" string="Переглянути партію" 
-                                type="object" class="btn-info" icon="fa-archive"
-                                invisible="not batch_id"/>
-                        <button name="action_view_movements_history" string="Історія рухів" 
-                                type="object" class="btn-secondary" icon="fa-history"/>
-                    </header>
-                    
-                    <sheet>
-                        <div class="oe_title">
-                            <h1>
-                                <field name="serial_number"/>
-                            </h1>
-                            <h2>
-                                <field name="nomenclature_name"/>
-                            </h2>
-                        </div>
-                        
-                        <group>
-                            <group string="Інформація про товар">
-                                <field name="nomenclature_code"/>
-                                <field name="category_name"/>
-                                <field name="tracking_info" widget="text"/>
-                            </group>
-                            <group string="Поточна локація">
-                                <field name="location_type" widget="badge"/>
-                                <field name="location_full_name"/>
-                                <field name="company_name"/>
-                            </group>
-                        </group>
-                        
-                        <group string="Партійна інформація" invisible="not batch_id">
-                            <group>
-                                <field name="batch_number"/>
-                                <field name="batch_state" widget="badge"/>
-                                <field name="date_created"/>
-                            </group>
-                            <group>
-                                <field name="document_reference"/>
-                                <field name="source_document_display"/>
-                                <field name="expiry_date"/>
-                            </group>
-                        </group>
-                        
-                        <group string="Кількості та статус">
-                            <group>
-                                <field name="qty_on_hand"/>
-                                <field name="qty_available"/>
-                            </group>
-                            <group>
-                                <field name="last_movement_date"/>
-                            </group>
-                        </group>
-                    </sheet>
-                </form>
-            </field>
-        </record>
-
-        <!-- ПОКРАЩЕНИЙ звіт по серійних номерах - List View -->
+        <!-- ПОКРАЩЕНИЙ звіт по серійних номерах -->
         <record id="view_stock_serial_report_list" model="ir.ui.view">
             <field name="name">stock.serial.report.list</field>
             <field name="model">stock.serial.report</field>
             <field name="arch" type="xml">
-                <list string="Всі серійні номери в системі" create="false" edit="false" delete="false"
-                      default_order="nomenclature_name, serial_number">
-                    
-                    <!-- Основна інформація -->
-                    <field name="serial_number" string="Серійний номер"/>
+                <list string="Звіт по серійних номерах" create="false" edit="false" delete="false">
                     <field name="nomenclature_name" string="Товар"/>
-                    <field name="nomenclature_code" string="Код" optional="show"/>
-                    <field name="category_name" string="Категорія" optional="show"/>
-                    
-                    <!-- Партійна інформація -->
-                    <field name="batch_number" string="Партія" optional="show"/>
-                    <field name="batch_state" string="Статус партії" widget="badge" optional="show"
-                           decoration-success="batch_state == 'active'"
-                           decoration-danger="batch_state == 'depleted'"
-                           decoration-warning="batch_state == 'expired'"
-                           decoration-muted="batch_state == 'blocked'"/>
-                    
-                    <!-- Документ походження -->
-                    <field name="document_reference" string="Документ" optional="show"/>
-                    <field name="source_document_display" string="Тип документу" optional="show"/>
-                    
-                    <!-- Локація -->
+                    <field name="serial_number" string="Серійний номер"/>
+                    <field name="batch_number" string="Партія"/>
+                    <field name="document_reference" string="Документ"/>
+                    <field name="source_document_type" string="Тип документу"/>
                     <field name="location_type" string="Тип локації" widget="badge" 
                            decoration-info="location_type == 'warehouse'"
                            decoration-warning="location_type == 'employee'"/>
-                    <field name="warehouse_name" string="Склад" optional="show"
-                           invisible="location_type != 'warehouse'"/>
-                    <field name="employee_name" string="Працівник" optional="show"
-                           invisible="location_type != 'employee'"/>
-                    
-                    <!-- Кількості -->
-                    <field name="qty_available" string="Доступно" optional="hide"
-                           decoration-warning="qty_available &lt;= 0"/>
-                    <field name="qty_on_hand" string="Фізично" optional="hide"/>
-                    
-                    <!-- Дати -->
-                    <field name="date_created" string="Дата створення" optional="hide"/>
-                    <field name="expiry_date" string="Термін придатності" optional="hide"
-                           decoration-danger="expiry_date and expiry_date &lt; context_today()"/>
-                    <field name="last_movement_date" string="Остання операція" optional="hide"/>
-                    
-                    <!-- Компанія -->
-                    <field name="company_name" string="Компанія" groups="base.group_multi_company" optional="hide"/>
-                    
-                    <!-- Кнопки дій -->
-                    <button name="action_view_balance_details" string="Залишок" 
-                            type="object" icon="fa-cubes" class="btn btn-sm btn-primary"/>
-                    <button name="action_view_batch_details" string="Партія" 
-                            type="object" icon="fa-archive" class="btn btn-sm btn-info"
-                            invisible="not batch_id"/>
-                    <button name="action_view_movements_history" string="Історія" 
-                            type="object" icon="fa-history" class="btn btn-sm btn-secondary"/>
+                    <field name="warehouse_name" string="Склад" optional="show"/>
+                    <field name="employee_name" string="Працівник" optional="show"/>
+                    <field name="qty_available" string="Доступна к-сть" optional="hide"/>
+                    <field name="company_id" string="Компанія" groups="base.group_multi_company" optional="hide"/>
                 </list>
             </field>
         </record>
 
-        <!-- Розширений Search View -->
+        <!-- Search view для звіту серійних номерів -->
         <record id="view_stock_serial_report_search" model="ir.ui.view">
             <field name="name">stock.serial.report.search</field>
             <field name="model">stock.serial.report</field>
             <field name="arch" type="xml">
                 <search string="Пошук серійних номерів">
-                    <!-- Основні поля пошуку -->
-                    <field name="serial_number" string="Серійний номер"/>
                     <field name="nomenclature_name" string="Товар"/>
-                    <field name="nomenclature_code" string="Код товару"/>
+                    <field name="serial_number" string="Серійний номер"/>
                     <field name="batch_number" string="Партія"/>
                     <field name="document_reference" string="Документ"/>
                     <field name="warehouse_name" string="Склад"/>
                     <field name="employee_name" string="Працівник"/>
-                    <field name="category_name" string="Категорія"/>
-                    <field name="company_name" string="Компанія"/>
                     
-                    <!-- Фільтри по локаціях -->
+                    <filter string="На складах" name="warehouse_only" domain="[('location_type', '=', 'warehouse')]"/>
+                    <filter string="У працівників" name="employee_only" domain="[('location_type', '=', 'employee')]"/>
+                    
                     <separator/>
-                    <filter string="На складах" name="warehouse_only" 
-                            domain="[('location_type', '=', 'warehouse')]"/>
-                    <filter string="У працівників" name="employee_only" 
-                            domain="[('location_type', '=', 'employee')]"/>
+                    <filter string="Прихідні накладні" name="receipts" domain="[('source_document_type', '=', 'Прихідна накладна')]"/>
+                    <filter string="Акти оприходування" name="disposals" domain="[('source_document_type', '=', 'Акт оприходування')]"/>
+                    <filter string="Повернення з сервісу" name="returns" domain="[('source_document_type', '=', 'Повернення з сервісу')]"/>
                     
-                    <!-- Фільтри по статусу партій -->
-                    <separator/>
-                    <filter string="Активні партії" name="active_batches" 
-                            domain="[('batch_state', '=', 'active')]"/>
-                    <filter string="Вичерпані партії" name="depleted_batches" 
-                            domain="[('batch_state', '=', 'depleted')]"/>
-                    <filter string="Прострочені партії" name="expired_batches" 
-                            domain="[('batch_state', '=', 'expired')]"/>
-                    <filter string="Заблоковані партії" name="blocked_batches" 
-                            domain="[('batch_state', '=', 'blocked')]"/>
-                    
-                    <!-- Фільтри по типу документів -->
-                    <separator/>
-                    <filter string="Прихідні накладні" name="receipts" 
-                            domain="[('source_document_type', '=', 'receipt')]"/>
-                    <filter string="Акти оприходування" name="disposals" 
-                            domain="[('source_document_type', '=', 'inventory')]"/>
-                    <filter string="Повернення з сервісу" name="returns" 
-                            domain="[('source_document_type', '=', 'return')]"/>
-                    <filter string="Коригування" name="adjustments" 
-                            domain="[('source_document_type', '=', 'adjustment')]"/>
-                    <filter string="Переміщення" name="transfers" 
-                            domain="[('source_document_type', '=', 'transfer')]"/>
-                    
-                    <!-- Фільтри по датах -->
-                    <separator/>
-                    <filter string="Створені сьогодні" name="created_today"
-                            domain="[('date_created', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('date_created', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
-                    <filter string="Створені цього тижня" name="created_this_week"
-                            domain="[('date_created', '&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
-                    <filter string="Створені цього місяця" name="created_this_month"
-                            domain="[('date_created', '&gt;=', context_today().strftime('%Y-%m-01'))]"/>
-                    
-                    <!-- Фільтри по термінах придатності -->
-                    <separator/>
-                    <filter string="Прострочені товари" name="expired_products"
-                            domain="[('expiry_date', '&lt;', context_today())]"/>
-                    <filter string="Закінчуються цього місяця" name="expiring_this_month"
-                            domain="[('expiry_date', '&gt;=', context_today()), ('expiry_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
-                    
-                    <!-- Фільтри по кількостях -->
-                    <separator/>
-                    <filter string="З позитивними залишками" name="positive_qty"
-                            domain="[('qty_available', '&gt;', 0)]"/>
-                    <filter string="Нульові залишки" name="zero_qty"
-                            domain="[('qty_available', '=', 0)]"/>
-                    
-                    <!-- Групування -->
                     <group expand="0" string="Групування">
-                        <filter string="Товар" name="group_product" 
-                                context="{'group_by': 'nomenclature_name'}"/>
-                        <filter string="Категорія" name="group_category" 
-                                context="{'group_by': 'category_name'}"/>
-                        <filter string="Партія" name="group_batch" 
-                                context="{'group_by': 'batch_number'}"/>
-                        <filter string="Документ" name="group_document" 
-                                context="{'group_by': 'document_reference'}"/>
-                        <filter string="Тип документу" name="group_doc_type" 
-                                context="{'group_by': 'source_document_display'}"/>
-                        <filter string="Тип локації" name="group_location_type" 
-                                context="{'group_by': 'location_type'}"/>
-                        <filter string="Склад" name="group_warehouse" 
-                                context="{'group_by': 'warehouse_name'}"/>
-                        <filter string="Працівник" name="group_employee" 
-                                context="{'group_by': 'employee_name'}"/>
-                        <filter string="Компанія" name="group_company" 
-                                context="{'group_by': 'company_name'}"/>
-                        <filter string="Статус партії" name="group_batch_state" 
-                                context="{'group_by': 'batch_state'}"/>
-                        <filter string="Дата створення" name="group_date_created" 
-                                context="{'group_by': 'date_created:month'}"/>
+                        <filter string="Товар" name="group_product" context="{'group_by': 'nomenclature_name'}"/>
+                        <filter string="Партія" name="group_batch" context="{'group_by': 'batch_number'}"/>
+                        <filter string="Документ" name="group_document" context="{'group_by': 'document_reference'}"/>
+                        <filter string="Тип документу" name="group_doc_type" context="{'group_by': 'source_document_type'}"/>
+                        <filter string="Тип локації" name="group_location_type" context="{'group_by': 'location_type'}"/>
+                        <filter string="Склад" name="group_warehouse" context="{'group_by': 'warehouse_name'}"/>
+                        <filter string="Працівник" name="group_employee" context="{'group_by': 'employee_name'}"/>
                     </group>
                 </search>
             </field>
         </record>
 
-        <!-- Pivot View для аналітики -->
-        <record id="view_stock_serial_report_pivot" model="ir.ui.view">
-            <field name="name">stock.serial.report.pivot</field>
-            <field name="model">stock.serial.report</field>
-            <field name="arch" type="xml">
-                <pivot string="Аналіз серійних номерів">
-                    <field name="nomenclature_name" type="row"/>
-                    <field name="location_type" type="col"/>
-                    <field name="batch_state" type="col"/>
-                    <field name="serial_number" type="measure"/>
-                </pivot>
-            </field>
-        </record>
-
-        <!-- Graph View для візуалізації -->
-        <record id="view_stock_serial_report_graph" model="ir.ui.view">
-            <field name="name">stock.serial.report.graph</field>
-            <field name="model">stock.serial.report</field>
-            <field name="arch" type="xml">
-                <graph string="Статистика серійних номерів" type="bar">
-                    <field name="nomenclature_name"/>
-                    <field name="serial_number" type="measure"/>
-                </graph>
-            </field>
-        </record>
-
-        <!-- Оновлена Action -->
         <record id="action_stock_serial_report" model="ir.actions.act_window">
             <field name="name">Всі серійні номери в системі</field>
             <field name="res_model">stock.serial.report</field>
-            <field name="view_mode">list,form,pivot,graph</field>
+            <field name="view_mode">list</field>
             <field name="search_view_id" ref="view_stock_serial_report_search"/>
-            <field name="context">{'search_default_warehouse_only': 1}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Тут відображаються всі серійні номери в системі!
                 </p>
                 <p>
-                    Ви можете переглянути всі серійні номери з детальною інформацією про:
-                    <ul>
-                        <li>Товар та його категорію</li>
-                        <li>Поточну локацію (склад або працівник)</li>
-                        <li>Партію та документ походження</li>
-                        <li>Статус партії та терміни придатності</li>
-                        <li>Історію рухів</li>
-                    </ul>
-                </p>
-                <p>
-                    Використовуйте фільтри для швидкого пошуку потрібних серійних номерів.
+                    Ви можете переглянути всі серійні номери з інформацією про товар, 
+                    локацію, партію та документ походження.
                 </p>
             </field>
         </record>
 
-        <!-- Dashboard Action з статистикою -->
-        <record id="action_stock_serial_dashboard" model="ir.actions.act_window">
-            <field name="name">Dashboard серійних номерів</field>
-            <field name="res_model">stock.serial.report</field>
-            <field name="view_mode">pivot,graph,list</field>
-            <field name="search_view_id" ref="view_stock_serial_report_search"/>
-            <field name="context">{
-                'search_default_group_product': 1,
-                'search_default_group_location_type': 1
-            }</field>
-        </record>
-
-        <!-- Меню для звіту (оновлене) -->
+        <!-- Меню для звіту -->
         <menuitem id="menu_stock_serial_report" 
                   name="Всі серійні номери в системі" 
                   parent="menu_stock_balance_management" 
                   action="action_stock_serial_report" 
                   sequence="40"/>
-
-        <!-- Додаткове меню для dashboard -->
-        <menuitem id="menu_stock_serial_dashboard" 
-                  name="Dashboard серійних номерів" 
-                  parent="menu_stock_balance_management" 
-                  action="action_stock_serial_dashboard" 
-                  sequence="41"/>
-
     </data>
 </odoo>

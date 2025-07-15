@@ -4,14 +4,11 @@ class StockBalanceSerialWizard(models.TransientModel):
     _name = 'stock.balance.serial.wizard'
     _description = 'Перегляд серійних номерів у залишках'
 
-
     balance_id = fields.Many2one('stock.balance', 'Залишок', required=True)
     nomenclature_name = fields.Char('Товар', related='balance_id.nomenclature_id.name', readonly=True)
     location_info = fields.Char('Локація', compute='_compute_location_info', readonly=True)
     qty_available = fields.Float('Доступна кількість', related='balance_id.qty_available', readonly=True)
     serial_line_ids = fields.One2many('stock.balance.serial.wizard.line', 'wizard_id', 'Серійні номери')
-
-
 
     @api.depends('balance_id')
     def _compute_location_info(self):

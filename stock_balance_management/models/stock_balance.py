@@ -423,9 +423,7 @@ class StockBalance(models.Model):
             ('nomenclature_id', '=', nomenclature_id),
             ('location_type', '=', location_type),
             ('company_id', '=', company_id),
-            (
-                
-                'qty_available', '>', 0),
+            ('qty_available', '>', 0),
         ]
         
         if location_type == 'warehouse':
