@@ -37,7 +37,7 @@ class StockSerialReport(models.Model):
                     SELECT 
                         row_number() OVER (ORDER BY sb.id, serial_line.serial_number) AS id,
                         sb.nomenclature_id,
-                        COALESCE(pn.name, 'Невідомий товар') AS nomenclature_name,
+                        COALESCE(pn.name, %s) AS nomenclature_name,
                         serial_line.serial_number,
                         sb.location_type,
                         COALESCE(sw.name, '') AS warehouse_name,
@@ -45,9 +45,9 @@ class StockSerialReport(models.Model):
                         COALESCE(batch.batch_number, '') AS batch_number,
                         COALESCE(batch.source_document_number, '') AS document_reference,
                         CASE 
-                            WHEN batch.source_document_type = 'receipt' THEN 'Прихідна накладна'
-                            WHEN batch.source_document_type = 'inventory' THEN 'Акт оприходування'
-                            WHEN batch.source_document_type = 'return' THEN 'Повернення з сервісу'
+                            WHEN batch.source_document_type = 'receipt' THEN %s
+                            WHEN batch.source_document_type = 'inventory' THEN %s
+                            WHEN batch.source_document_type = 'return' THEN %s
                             ELSE COALESCE(batch.source_document_type, '')
                         END AS source_document_type,
                         sb.company_id,
@@ -74,20 +74,25 @@ class StockSerialReport(models.Model):
                 )
             """.format(self._table)
             
-            self.env.cr.execute(sql_query)
+            self.env.cr.execute(sql_query, (
+                'Невідомий товар',
+                'Прихідна накладна', 
+                'Акт оприходування',
+                'Повернення з сервісу'
+            ))
             _logger.info(f"Successfully created view {self._table}")
             
         except Exception as e:
             _logger.error(f"Помилка створення view stock_serial_report: {e}")
-            # Створюємо простішу view як fallback
+            # Створюємо простішу view як fallback без українського тексту
             try:
-                self.env.cr.execute("""
+                fallback_sql = """
                     CREATE OR REPLACE VIEW {} AS (
                         SELECT 
                             sb.id,
                             sb.nomenclature_id,
-                            COALESCE(pn.name, 'Невідомий товар') AS nomenclature_name,
-                            'Дані недоступні' AS serial_number,
+                            COALESCE(pn.name, %s) AS nomenclature_name,
+                            %s AS serial_number,
                             sb.location_type,
                             COALESCE(sw.name, '') AS warehouse_name,
                             COALESCE(he.name, '') AS employee_name,
@@ -105,28 +110,31 @@ class StockSerialReport(models.Model):
                         AND sb.qty_available > 0
                         LIMIT 0
                     )
-                """.format(self._table))
+                """.format(self._table)
+                
+                self.env.cr.execute(fallback_sql, ('Невідомий товар', 'Дані недоступні'))
                 _logger.info(f"Created fallback view {self._table}")
             except Exception as fallback_error:
                 _logger.error(f"Fallback view creation failed: {fallback_error}")
-                self.env.cr.execute("""
+                final_fallback = """
                     CREATE OR REPLACE VIEW {} AS (
                         SELECT 
                             1 AS id,
                             NULL::integer AS nomenclature_id,
-                            'Помилка завантаження'::varchar AS nomenclature_name,
-                            'Помилка'::varchar AS serial_number,
-                            'warehouse'::varchar AS location_type,
-                            ''::varchar AS warehouse_name,
-                            ''::varchar AS employee_name,
-                            ''::varchar AS batch_number,
-                            ''::varchar AS document_reference,
-                            ''::varchar AS source_document_type,
+                            'Loading Error' AS nomenclature_name,
+                            'Error' AS serial_number,
+                            'warehouse' AS location_type,
+                            '' AS warehouse_name,
+                            '' AS employee_name,
+                            '' AS batch_number,
+                            '' AS document_reference,
+                            '' AS source_document_type,
                             1::integer AS company_id,
                             0::float AS qty_available
                         WHERE FALSE
                     )
-                """.format(self._table))
+                """.format(self._table)
+                self.env.cr.execute(final_fallback)
 
     @api.model
     def search_read(self, domain=None, fields=None, offset=0, limit=None, order=None):
