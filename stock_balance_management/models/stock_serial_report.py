@@ -77,7 +77,7 @@ class StockSerialReport(models.Model):
 
         try:
             # Створюємо view з безпечною обробкою помилок
-            # Використовуємо безпечний SQL запит без українських символів у COALESCE
+            # Створюємо SQL view без текстових констант для уникнення помилки JSON
             sql_query = """
                 CREATE OR REPLACE VIEW {} AS (
                     WITH serial_data AS (
@@ -94,7 +94,7 @@ class StockSerialReport(models.Model):
                         FROM stock_balance sb
                         CROSS JOIN LATERAL (
                             SELECT trim(unnest(string_to_array(
-                                replace(COALESCE(sb.serial_numbers, ''), E'\\n', ','), ','
+                                replace(COALESCE(sb.serial_numbers, NULL), E'\\n', ','), ','
                             ))) AS serial
                         ) AS serial_split
                         WHERE sb.serial_numbers IS NOT NULL
@@ -103,24 +103,16 @@ class StockSerialReport(models.Model):
                         AND trim(serial_split.serial) != ''
                     )
                     SELECT 
-                        row_number() OVER (ORDER BY pn.name, sd.serial_number) AS id,
+                        row_number() OVER (ORDER BY COALESCE(pn.name, ''), sd.serial_number) AS id,
                         sd.nomenclature_id,
-                        CASE 
-                            WHEN pn.name IS NOT NULL THEN pn.name
-                            ELSE 'Unknown Product'
-                        END AS nomenclature_name,
+                        pn.name AS nomenclature_name,
                         sd.serial_number,
                         sd.location_type,
-                        COALESCE(sw.name, '') AS warehouse_name,
-                        COALESCE(he.name, '') AS employee_name,
-                        COALESCE(batch.batch_number, '') AS batch_number,
-                        COALESCE(batch.source_document_number, '') AS document_reference,
-                        CASE 
-                            WHEN batch.source_document_type = 'receipt' THEN 'Receipt'
-                            WHEN batch.source_document_type = 'inventory' THEN 'Inventory'
-                            WHEN batch.source_document_type = 'return' THEN 'Return'
-                            ELSE COALESCE(batch.source_document_type, '')
-                        END AS source_document_type,
+                        sw.name AS warehouse_name,
+                        he.name AS employee_name,
+                        batch.batch_number,
+                        batch.source_document_number AS document_reference,
+                        batch.source_document_type,
                         sd.company_id,
                         sd.qty_available
                     FROM serial_data sd
@@ -130,7 +122,7 @@ class StockSerialReport(models.Model):
                     LEFT JOIN stock_batch batch ON batch.id = sd.batch_id
                     WHERE sd.serial_number IS NOT NULL
                     AND sd.serial_number != ''
-                    ORDER BY pn.name, sd.serial_number
+                    ORDER BY COALESCE(pn.name, ''), sd.serial_number
                 )
             """.format(self._table)
             
@@ -160,22 +152,43 @@ class StockSerialReport(models.Model):
 
     @api.model
     def search_read(self, domain=None, fields=None, offset=0, limit=None, order=None):
-        """Перевизначаємо search_read для перекладу значень та кращої обробки помилок"""
+        """Перевизначаємо search_read для обробки NULL значень та перекладів"""
         try:
             result = super().search_read(domain, fields, offset, limit, order)
             
-            # Перекладаємо значення source_document_type та nomenclature_name
+            # Обробляємо NULL значення та додаємо переклади
             for record in result:
-                if 'source_document_type' in record:
-                    if record['source_document_type'] == 'Receipt':
-                        record['source_document_type'] = 'Прихідна накладна'
-                    elif record['source_document_type'] == 'Inventory':
-                        record['source_document_type'] = 'Акт оприходування'
-                    elif record['source_document_type'] == 'Return':
-                        record['source_document_type'] = 'Повернення з сервісу'
-                
-                if 'nomenclature_name' in record and record['nomenclature_name'] == 'Unknown Product':
+                # Обробка nomenclature_name
+                if 'nomenclature_name' in record and not record['nomenclature_name']:
                     record['nomenclature_name'] = 'Невідомий товар'
+                
+                # Обробка warehouse_name
+                if 'warehouse_name' in record and not record['warehouse_name']:
+                    record['warehouse_name'] = ''
+                
+                # Обробка employee_name  
+                if 'employee_name' in record and not record['employee_name']:
+                    record['employee_name'] = ''
+                
+                # Обробка batch_number
+                if 'batch_number' in record and not record['batch_number']:
+                    record['batch_number'] = ''
+                
+                # Обробка document_reference
+                if 'document_reference' in record and not record['document_reference']:
+                    record['document_reference'] = ''
+                
+                # Переклад source_document_type
+                if 'source_document_type' in record:
+                    doc_type = record['source_document_type']
+                    if doc_type == 'receipt':
+                        record['source_document_type'] = 'Прихідна накладна'
+                    elif doc_type == 'inventory':
+                        record['source_document_type'] = 'Акт оприходування'
+                    elif doc_type == 'return':
+                        record['source_document_type'] = 'Повернення з сервісу'
+                    elif not doc_type:
+                        record['source_document_type'] = ''
             
             return result
         except Exception as e:
@@ -192,11 +205,12 @@ class StockSerialReport(models.Model):
             # Перекладаємо значення в групуванні
             for group in result:
                 if 'source_document_type' in group:
-                    if group['source_document_type'] == 'Receipt':
+                    doc_type = group['source_document_type']
+                    if doc_type == 'receipt':
                         group['source_document_type'] = 'Прихідна накладна'
-                    elif group['source_document_type'] == 'Inventory':
+                    elif doc_type == 'inventory':
                         group['source_document_type'] = 'Акт оприходування'  
-                    elif group['source_document_type'] == 'Return':
+                    elif doc_type == 'return':
                         group['source_document_type'] = 'Повернення з сервісу'
             
             return result
