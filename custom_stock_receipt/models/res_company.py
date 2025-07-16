@@ -26,5 +26,5 @@ class ResCompany(models.Model):
             
             return super(ResCompany, self).name_search(name=name, args=args, operator=operator, limit=limit)
         
-        # Для інших випадків викликаємо стандартний name_search
+        # Для інши випадків викликаємо стандартний name_search
         return super(ResCompany, self).name_search(name=name, args=args, operator=operator, limit=limit)
