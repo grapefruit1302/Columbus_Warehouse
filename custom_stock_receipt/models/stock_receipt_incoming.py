@@ -11,41 +11,6 @@ from ..services.numbering_service import NumberingService
 
 _logger = logging.getLogger(__name__)
 
-class ResCompany(models.Model):
-    _inherit = 'res.company'
-
-    @api.model
-    def name_search(self, name='', args=None, operator='ilike', limit=100):
-        args = args or []
-        context = self.env.context
-        
-        # Перевіряємо, чи виклик походить від stock.receipt.incoming
-        if context.get('_get_child_companies_domain') == 'stock.receipt.incoming,_get_child_companies_domain':
-            _logger.info("Custom name_search for stock.receipt.incoming triggered")
-            # Отримуємо компанії з контексту
-            allowed_company_ids = context.get('allowed_company_ids', [])
-            child_company_ids = set()
-            if allowed_company_ids:
-                companies = self.browse(allowed_company_ids)
-                for company in companies:
-                    child_company_ids.update(company.child_ids.ids)
-            else:
-                child_company_ids.update(self.env.company.child_ids.ids)
-            
-            # Формуємо домен тільки для дочірніх компаній
-            domain = [('id', 'in', list(child_company_ids))] if child_company_ids else [('id', '=', False)]
-            if name:
-                domain += ['|', ('name', operator, name), ('display_name', operator, name)]
-            
-            _logger.info(f"Custom name_search domain: {domain}")
-            # Виконуємо пошук і повертаємо список кортежів (id, name)
-            companies = self.search(domain + args, limit=limit)
-            return [(company.id, company.display_name) for company in companies]
-        
-        # Для інших випадків викликаємо стандартну логіку
-        _logger.info("Falling back to super name_search")
-        return super(ResCompany, self).name_search(name, args, operator, limit)
-
 class StockReceiptIncoming(models.Model):
     _name = 'stock.receipt.incoming'
     _description = 'Прихідна накладна'
@@ -198,26 +163,6 @@ class StockReceiptIncoming(models.Model):
             }
         }
 
-    def _get_child_companies_domain(self):
-        """Отримує домен для дочірніх компаній (гілок)"""
-        allowed_company_ids = self.env.context.get('allowed_company_ids', [])
-        if allowed_company_ids:
-            companies = self.env['res.company'].browse(allowed_company_ids)
-        else:
-            companies = self.env.company
-        
-        child_company_ids = set()
-        for company in companies:
-            child_company_ids.update(company.child_ids.ids)
-        
-        _logger.info(f"Allowed company IDs: {allowed_company_ids}")
-        _logger.info(f"Found child company IDs: {child_company_ids}")
-        
-        if child_company_ids:
-            return [('id', 'in', list(child_company_ids))]
-        else:
-            _logger.warning("No child companies found")
-            return [('id', '=', False)]
 
     @api.onchange('company_id')
     def _onchange_company_id(self):
