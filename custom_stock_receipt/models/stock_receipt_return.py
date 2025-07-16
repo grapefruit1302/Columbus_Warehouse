@@ -2,52 +2,37 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 from datetime import datetime
 
+from ..services.numbering_service import NumberingService
+
 
 class StockReceiptReturn(models.Model):
     _name = 'stock.receipt.return'
     _description = 'Повернення з сервісу'
     _order = 'date desc, id desc'
     _rec_name = 'number'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = [
+        'stock.receipt.base',
+        'serial.tracking.mixin',
+        'document.validation.mixin',
+        'workflow.mixin'
+    ]
 
-    number = fields.Char('Номер', required=True, copy=False, readonly=True, 
-                        index=True, default=lambda self: self.env['ir.sequence'].next_by_code('stock.receipt.return'))
-    date = fields.Datetime('Дата', required=True, default=fields.Datetime.now)
     service_partner_id = fields.Many2one('res.partner', 'Сервісний центр', required=True)
-    warehouse_id = fields.Many2one('stock.warehouse', 'Склад', required=True,
-                                  default=lambda self: self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1))
-    
-    state = fields.Selection([
-        ('draft', 'Чернетка'),
-        ('confirmed', 'Підтверджено'),
-        ('done', 'Виконано'),
-        ('cancel', 'Скасовано')
-    ], 'Статус', default='draft', tracking=True)
-    
     line_ids = fields.One2many('stock.receipt.return.line', 'return_id', 'Позиції')
     service_notes = fields.Text('Примітки сервісу')
-    notes = fields.Text('Внутрішні примітки')
-    
     total_qty = fields.Float('Загальна кількість', compute='_compute_totals', store=True)
     
     @api.depends('line_ids.qty')
     def _compute_totals(self):
         for record in self:
             record.total_qty = sum(line.qty for line in record.line_ids)
-    
-    def action_confirm(self):
-        if not self.line_ids:
-            raise UserError('Додайте хоча б одну позицію до документа!')
-        self.state = 'confirmed'
-        
-    def action_done(self):
-        self.state = 'done'
-        
-    def action_cancel(self):
-        self.state = 'cancel'
-        
-    def action_reset_to_draft(self):
-        self.state = 'draft'
+
+    @api.model
+    def create(self, vals):
+        """Генеруємо номер документа при створенні"""
+        if not vals.get('number') or vals.get('number') in ['/', 'Новий']:
+            vals['number'] = NumberingService.generate_receipt_number('return', self.env)
+        return super(StockReceiptReturn, self).create(vals)
 
 
 class StockReceiptReturnLine(models.Model):
