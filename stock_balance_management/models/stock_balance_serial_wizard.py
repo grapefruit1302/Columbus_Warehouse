@@ -27,7 +27,7 @@ class StockBalanceSerialWizard(models.TransientModel):
             balance = self.env['stock.balance'].browse(balance_id)
             res['balance_id'] = balance_id
             
-            serials = balance.get_serial_numbers_list()
+            serials = balance._get_serial_numbers_list()
             res['serial_line_ids'] = [(0, 0, {'serial_number': serial}) for serial in serials]
         
         return res

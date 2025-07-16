@@ -122,6 +122,12 @@ class StockBalance(models.Model):
     ]
 
 
+    serial_count = fields.Integer(
+        'Кількість S/N', 
+        compute='_compute_serial_count',
+        help='Кількість серійних номерів'
+    )
+
     @api.depends('serial_numbers')
     def _compute_serial_count(self):
         """Підраховує кількість серійних номерів"""
@@ -129,7 +135,6 @@ class StockBalance(models.Model):
             balance.serial_count = len(balance._get_serial_numbers_list())
 
     @api.depends('serial_numbers', 'batch_id')
-    @api.depends('serial_numbers')
     def _compute_serial_lines(self):
         """Створює тимчасові записи для відображення серійних номерів"""
         for balance in self:
@@ -154,7 +159,6 @@ class StockBalance(models.Model):
                 for line_data in lines_to_create:
                     self.env['stock.balance.serial.line'].create(line_data)
 
-    # ДОДАЙТЕ ці методи:
     def _get_doc_type_display(self, doc_type):
         """Перекладає тип документу"""
         mapping = {
@@ -163,14 +167,6 @@ class StockBalance(models.Model):
             'return': 'Повернення з сервісу',
         }
         return mapping.get(doc_type, doc_type or '')
-
-    # ДОДАЙТЕ поле:
-    serial_count = fields.Integer(
-        'Кількість S/N', 
-        compute='_compute_serial_count',
-        help='Кількість серійних номерів'
-    )
-
 
     def action_view_serials(self):
         """Швидкий перегляд серійних номерів з списку"""
@@ -188,13 +184,6 @@ class StockBalance(models.Model):
             'view_mode': 'form',
             'target': 'new',
         }
-
-
-    @api.depends('serial_numbers')
-    def _compute_serial_count(self):
-        """Підраховує кількість серійних номерів"""
-        for balance in self:
-            balance.serial_count = len(balance._get_serial_numbers_list())
 
     def _get_serial_info(self, serial_number):
         """Отримує додаткову інформацію про серійний номер"""
@@ -227,7 +216,7 @@ class StockBalance(models.Model):
         return result
 
     def _get_serial_numbers_list(self):
-        """Повертає список серійних номерів (виправлений метод)"""
+        """Повертає список серійних номерів"""
         if not self.serial_numbers:
             return []
         
@@ -245,20 +234,6 @@ class StockBalance(models.Model):
         """Поки що доступна кількість = фізичній (без резервування)"""
         for balance in self:
             balance.qty_available = balance.qty_on_hand
-
-
-    def _get_serial_numbers_list(self):
-        """Повертає список серійних номерів"""
-        if not self.serial_numbers:
-            return []
-        
-        serials = []
-        for line in self.serial_numbers.split('\n'):
-            for serial in line.split(','):
-                serial = serial.strip()
-                if serial:
-                    serials.append(serial)
-        return serials
 
     @api.depends('nomenclature_id', 'location_type', 'warehouse_id', 'employee_id', 'batch_id')
     def _compute_display_name(self):
