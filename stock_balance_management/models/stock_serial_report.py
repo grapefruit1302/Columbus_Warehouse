@@ -37,7 +37,7 @@ class StockSerialReport(models.Model):
                     SELECT 
                         row_number() OVER (ORDER BY sb.id, serial_line.serial_number) AS id,
                         sb.nomenclature_id,
-                        COALESCE(pn.name, %s) AS nomenclature_name,
+                        COALESCE(pn.name, 'Unknown Product') AS nomenclature_name,
                         serial_line.serial_number,
                         sb.location_type,
                         COALESCE(sw.name, '') AS warehouse_name,
@@ -45,9 +45,9 @@ class StockSerialReport(models.Model):
                         COALESCE(batch.batch_number, '') AS batch_number,
                         COALESCE(batch.source_document_number, '') AS document_reference,
                         CASE 
-                            WHEN batch.source_document_type = 'receipt' THEN %s
-                            WHEN batch.source_document_type = 'inventory' THEN %s
-                            WHEN batch.source_document_type = 'return' THEN %s
+                            WHEN batch.source_document_type = 'receipt' THEN 'Receipt'
+                            WHEN batch.source_document_type = 'inventory' THEN 'Inventory'
+                            WHEN batch.source_document_type = 'return' THEN 'Return'
                             ELSE COALESCE(batch.source_document_type, '')
                         END AS source_document_type,
                         sb.company_id,
@@ -74,25 +74,20 @@ class StockSerialReport(models.Model):
                 )
             """.format(self._table)
             
-            self.env.cr.execute(sql_query, (
-                'Невідомий товар',
-                'Прихідна накладна', 
-                'Акт оприходування',
-                'Повернення з сервісу'
-            ))
+            self.env.cr.execute(sql_query)
             _logger.info(f"Successfully created view {self._table}")
             
         except Exception as e:
             _logger.error(f"Помилка створення view stock_serial_report: {e}")
-            # Створюємо простішу view як fallback без українського тексту
+            # Створюємо простішу view як fallback
             try:
                 fallback_sql = """
                     CREATE OR REPLACE VIEW {} AS (
                         SELECT 
                             sb.id,
                             sb.nomenclature_id,
-                            COALESCE(pn.name, %s) AS nomenclature_name,
-                            %s AS serial_number,
+                            COALESCE(pn.name, 'Unknown Product') AS nomenclature_name,
+                            'Data Unavailable' AS serial_number,
                             sb.location_type,
                             COALESCE(sw.name, '') AS warehouse_name,
                             COALESCE(he.name, '') AS employee_name,
@@ -112,7 +107,7 @@ class StockSerialReport(models.Model):
                     )
                 """.format(self._table)
                 
-                self.env.cr.execute(fallback_sql, ('Невідомий товар', 'Дані недоступні'))
+                self.env.cr.execute(fallback_sql)
                 _logger.info(f"Created fallback view {self._table}")
             except Exception as fallback_error:
                 _logger.error(f"Fallback view creation failed: {fallback_error}")
