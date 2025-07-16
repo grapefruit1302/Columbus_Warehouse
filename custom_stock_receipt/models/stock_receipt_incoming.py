@@ -6,6 +6,9 @@ import base64
 import xlrd
 import io
 
+from ..services.currency_service import CurrencyService
+from ..services.numbering_service import NumberingService
+
 _logger = logging.getLogger(__name__)
 
 class ResCompany(models.Model):
@@ -48,229 +51,44 @@ class StockReceiptIncoming(models.Model):
     _description = 'Прихідна накладна'
     _order = 'date desc, id desc'
     _rec_name = 'number'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = [
+        'stock.receipt.base',
+        'serial.tracking.mixin',
+        'document.validation.mixin',
+        'workflow.mixin'
+    ]
 
-    number = fields.Char('Номер', required=True, copy=False, readonly=True, 
-                         index=True, default=lambda self: self._get_default_number())
+    supplier_invoice_number = fields.Char(
+        'Номер розхідної постачальника', 
+        help='Номер документа від постачальника',
+        states={'posted': [('readonly', True)], 'confirmed': [('readonly', True)]}
+    )
     
-    @api.model
-    def _get_default_number(self):
-        """Отримуємо наступний номер із послідовності для відображення"""
-        company = self.env.company
-        if company and company.name:
-            words = company.name.split()
-            company_prefix = words[1].upper()[:3] if len(words) >= 2 else words[0].upper()[:3] if words else 'XXX'
-        else:
-            company_prefix = 'XXX'
-        
-        # Використовуємо next_by_code для резервування номера
-        sequence_code = 'stock.receipt.incoming'
-        # Додаємо контекст із датою, щоб врахувати use_date_range
-        context = {'ir_sequence_date': fields.Date.today()}
-        next_seq = self.env['ir.sequence'].with_context(**context).with_company(company).next_by_code(sequence_code)
-        
-        if next_seq:
-            # Форматуємо номер із префіксом компанії
-            import re
-            numbers = re.findall(r'\d+', next_seq)
-            seq_number = numbers[-1].zfill(8) if numbers else '00000001'
-            return f"{company_prefix}-ПН-{seq_number}"
-        
-        return f"{company_prefix}-ПН-00000001"
+    partner_id = fields.Many2one(
+        'res.partner', 
+        'Постачальник', 
+        required=True,
+        domain="[('is_supplier', '=', True)]",
+        states={'posted': [('readonly', True)], 'confirmed': [('readonly', True)]}
+    )
     
-    date = fields.Date('Дата', required=True, default=fields.Date.today, 
-                       states={'posted': [('readonly', True)], 'confirmed': [('readonly', True)]})
-    supplier_invoice_number = fields.Char('Номер розхідної постачальника', 
-                                         help='Номер документа від постачальника',
-                                         states={'posted': [('readonly', True)], 'confirmed': [('readonly', True)]})
-    partner_id = fields.Many2one('res.partner', 'Постачальник', required=True,
-                                domain="[('is_supplier', '=', True)]",
-                                states={'posted': [('readonly', True)], 'confirmed': [('readonly', True)]})
-    warehouse_id = fields.Many2one('stock.warehouse', 'Склад', required=True, 
-                                   default=lambda self: self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1),
-                                   states={'posted': [('readonly', True)], 'confirmed': [('readonly', True)]})
-    company_id = fields.Many2one('res.company', 'Компанія', required=True,
-                                 domain=lambda self: self._get_child_companies_domain(),
-                                 states={'posted': [('readonly', True)], 'confirmed': [('readonly', True)]})
-    no_vat = fields.Boolean('Товар без ПДВ', default=False,
-                            help='Якщо увімкнено, товари в цій накладній не обкладаються ПДВ',
-                            states={'posted': [('readonly', True)], 'confirmed': [('readonly', True)]})
-    state = fields.Selection([
-        ('draft', 'Чернетка'),
-        ('posted', 'Проведено'),
-        ('confirmed', 'Підтверджено'),
-        ('cancel', 'Скасовано')
-    ], 'Статус', default='draft', tracking=True)
-    line_ids = fields.One2many('stock.receipt.incoming.line', 'receipt_id', 'Позиції')
-    notes = fields.Text('Примітки')
-    
-    posting_time = fields.Selection([
-        ('start_of_day', 'Початок дня'),
-        ('end_of_day', 'Кінець дня'),
-        ('current_time', 'Поточний час'),
-        ('custom_time', 'Власний час')
-    ], 'Час проведення', readonly=True)
-    posting_datetime = fields.Datetime('Дата та час проведення', readonly=True)
-    has_serial_products = fields.Boolean('Має товари з серійними номерами', 
-                                       compute='_compute_has_serial_products', store=True)
-
-    @api.depends('line_ids.nomenclature_id.tracking_serial')
-    def _compute_has_serial_products(self):
-        """Перевіряє чи є в документі товари з обліком по серійних номерах"""
-        for record in self:
-            record.has_serial_products = any(line.nomenclature_id.tracking_serial for line in record.line_ids)
+    no_vat = fields.Boolean(
+        'Товар без ПДВ', 
+        default=False,
+        help='Якщо увімкнено, товари в цій накладній не обкладаються ПДВ',
+        states={'posted': [('readonly', True)], 'confirmed': [('readonly', True)]}
+    )
 
     @api.model
     def create(self, vals):
-        """Використовуємо згенерований номер, якщо він є, або генеруємо новий"""
-        company = self.env.company
-        if company and company.name:
-            words = company.name.split()
-            company_prefix = words[1].upper()[:3] if len(words) >= 2 else words[0].upper()[:3] if words else 'XXX'
-        else:
-            company_prefix = 'XXX'
-        
-        if (vals.get('number', 'Новий') in ['/', 'Новий'] or 
-            not vals.get('number') or 
-            vals.get('number').startswith(f"{company_prefix}-ПН-")):
-            if vals.get('number') in ['/', 'Новий'] or not vals.get('number'):
-                vals['number'] = self._get_default_number()
-        else:
-            vals['number'] = self._get_default_number()
-            
+        """Генеруємо номер документа при створенні"""
+        if not vals.get('number') or vals.get('number') in ['/', 'Новий']:
+            vals['number'] = NumberingService.generate_receipt_number('incoming', self.env)
         return super(StockReceiptIncoming, self).create(vals)
 
     def _get_amount_in_words(self, amount):
         """Перетворює суму в слова українською мовою"""
-        
-        def get_currency_form(num):
-            """Повертає правильну форму слова 'гривня'"""
-            if num % 100 in [11, 12, 13, 14]:
-                return "гривень"
-            elif num % 10 == 1:
-                return "гривня" 
-            elif num % 10 in [2, 3, 4]:
-                return "гривні"
-            else:
-                return "гривень"
-        
-        def get_kopeck_form(num):
-            """Повертає правильну форму слова 'копійка'"""
-            if num % 100 in [11, 12, 13, 14]:
-                return "копійок"
-            elif num % 10 == 1:
-                return "копійка"
-            elif num % 10 in [2, 3, 4]:
-                return "копійки" 
-            else:
-                return "копійок"
-        
-        def convert_hundreds(num, feminine=False):
-            """Конвертує число до 999 в слова"""
-            ones = ['', 'один', 'два', 'три', 'чотири', "п'ять", 'шість', 'сім', 'вісім', "дев'ять"]
-            ones_f = ['', 'одна', 'дві', 'три', 'чотири', "п'ять", 'шість', 'сім', 'вісім', "дев'ять"]
-            teens = ['десять', 'одинадцять', 'дванадцять', 'тринадцять', 'чотирнадцять', 
-                    "п'ятнадцять", 'шістнадцять', 'сімнадцять', 'вісімнадцять', "дев'ятнадцять"]
-            tens = ['', '', 'двадцять', 'тридцять', 'сорок', "п'ятдесят", 'шістдесят', 'сімдесят', 'вісімдесят', "дев'яносто"]
-            hundreds = ['', 'сто', 'двісті', 'триста', 'чотириста', "п'ятсот", 'шістсот', 'сімсот', 'вісімсот', "дев'ятсот"]
-            
-            if num == 0:
-                return ""
-            
-            result = []
-            
-            # Сотні
-            if num >= 100:
-                result.append(hundreds[num // 100])
-                num %= 100
-            
-            # Десятки та одиниці
-            if num >= 20:
-                result.append(tens[num // 10])
-                if num % 10 > 0:
-                    if feminine:
-                        result.append(ones_f[num % 10])
-                    else:
-                        result.append(ones[num % 10])
-            elif num >= 10:
-                result.append(teens[num - 10])
-            elif num > 0:
-                if feminine:
-                    result.append(ones_f[num])
-                else:
-                    result.append(ones[num])
-            
-            return " ".join(result)
-        
-        def get_scale_word(num, words):
-            """Повертає правильну форму масштабного слова"""
-            if num % 100 in [11, 12, 13, 14]:
-                return words[2]  # багато
-            elif num % 10 == 1:
-                return words[0]  # один
-            elif num % 10 in [2, 3, 4]:
-                return words[1]  # кілька
-            else:
-                return words[2]  # багато
-        
-        def number_to_words_ua(num):
-            """Перетворює число в слова українською"""
-            if num == 0:
-                return "нуль"
-            
-            result = []
-            
-            # Мільярди
-            if num >= 1000000000:
-                billions = num // 1000000000
-                result.append(convert_hundreds(billions))
-                result.append(get_scale_word(billions, ['мільярд', 'мільярди', 'мільярдів']))
-                num %= 1000000000
-            
-            # Мільйони
-            if num >= 1000000:
-                millions = num // 1000000
-                result.append(convert_hundreds(millions))
-                result.append(get_scale_word(millions, ['мільйон', 'мільйони', 'мільйонів']))
-                num %= 1000000
-            
-            # Тисячі
-            if num >= 1000:
-                thousands = num // 1000
-                result.append(convert_hundreds(thousands, True))  # жіночий рід для тисяч
-                result.append(get_scale_word(thousands, ['тисяча', 'тисячі', 'тисяч']))
-                num %= 1000
-            
-            # Сотні, десятки, одиниці (для гривень - жіночий рід)
-            if num > 0:
-                result.append(convert_hundreds(num, True))
-            
-            return " ".join(filter(None, result))
-        
-        try:
-            int_part = int(amount)
-            decimal_part = int(round((amount - int_part) * 100))
-            
-            if int_part == 0:
-                words_part = "нуль"
-            else:
-                words_part = number_to_words_ua(int_part)
-            
-            currency_form = get_currency_form(int_part)
-            
-            if decimal_part == 0:
-                return f"{words_part} {currency_form}"
-            else:
-                kopeck_words = number_to_words_ua(decimal_part) if decimal_part > 0 else "нуль"
-                kopeck_form = get_kopeck_form(decimal_part)
-                return f"{words_part} {currency_form} {kopeck_words} {kopeck_form}"
-                
-        except Exception as e:
-            # Fallback з логуванням
-            _logger.error(f"Error in _get_amount_in_words: {e}")
-            int_part = int(amount)
-            decimal_part = int((amount - int_part) * 100)
-            return f"{int_part} гривень {decimal_part:02d} копійок"
+        return CurrencyService.amount_to_words_ua(amount)
 
     def action_post(self):
         """Відкриває wizard для вибору часу проведення"""

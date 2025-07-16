@@ -1,3 +1,5 @@
+from . import stock_serial_number
+from . import stock_receipt_base
 from . import stock_receipt_incoming
 from . import stock_receipt_disposal
 from . import stock_receipt_return
