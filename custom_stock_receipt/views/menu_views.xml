@@ -11,7 +11,7 @@
         <menuitem id="menu_custom_stock_receipt_dashboard"
                   name="Всі документи"
                   parent="menu_custom_stock_receipt_main"
-                  action="action_stock_receipt_dashboard"
+                  action="action_stock_receipt_all_documents"
                   sequence="1"/>
 
         <!-- Підменю "Прихідні накладні" -->

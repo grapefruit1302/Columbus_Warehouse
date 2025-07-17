@@ -22,7 +22,7 @@
                     <filter string="Повернення з сервісу" name="returns" domain="[('document_type', '=', 'return')]"/>
                     
                     <separator/>
-                    <filter string="За сьогодні" name="today" domain="[('date', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('date', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
+                    <filter string="За сьогодні" name="today" domain="[('date', '>=', context_today()), ('date', '&lt;=', context_today())]"/>
                     <filter string="За тиждень" name="week" domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                     <filter string="За місяць" name="month" domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
                     
@@ -67,45 +67,130 @@
                             <h1>Прихід товарів</h1>
                         </div>
                         
-                        <field name="all_documents_ids" widget="one2many" nolabel="1" style="width: 100%;" 
-                               context="{'search_view_ref': 'custom_stock_receipt.view_stock_receipt_documents_line_search'}">
-                            <list string="Документи"
-                                class="o_list_view o_list_table_ungrouped"
-                                decoration-info="state=='draft'"
-                                decoration-warning="state=='confirmed'"
-                                decoration-success="state=='done'"
-                                decoration-muted="state=='cancel'"
-                                create="false"
-                                edit="false"
-                                delete="false"
-                                has_selectors="0">
-                                <field name="document_type_display" string="Тип операції"/>
-                                <field name="number" string="Номер"/>
-                                <field name="date" string="Дата"/>
-                                <field name="partner_name" string="Партнер/Сервіс"/>
-                                <field name="warehouse_name" string="Склад"/>
-                                <!-- <field name="total_qty" string="Кількість" sum="Загалом"/> -->
-                                <field name="state" string="Статус" widget="badge"
-                                    decoration-info="state=='draft'"
-                                    decoration-warning="state=='confirmed'"
-                                    decoration-success="state=='done'"
-                                    decoration-danger="state=='cancel'"/>
-                                <field name="document_type" invisible="1"/>
-                                <field name="document_id" invisible="1"/>
-                                <field name="state_display" invisible="1"/>
-                                <button name="action_open_document"
-                                        type="object"
-                                        string="Відкрити"
-                                        class="btn btn-primary btn-sm"
-                                        icon="fa-external-link"/>
-                            </list>
-                        </field>
+                        <!-- Інформація про фільтри -->
+                        <group col="4" string="Фільтри">
+                            <field name="filter_date_from"/>
+                            <field name="filter_date_to"/>
+                            <field name="filter_document_type"/>
+                            <field name="filter_state"/>
+                            <field name="filter_warehouse_id"/>
+                        </group>
+                        
+                        <!-- Налаштування відображення -->
+                        <group col="4" string="Налаштування відображення">
+                            <field name="show_partner"/>
+                            <field name="show_warehouse"/>
+                            <field name="show_total_qty"/>
+                            <field name="show_total_amount"/>
+                            <field name="show_created_by"/>
+                            <field name="show_posting_time"/>
+                        </group>
+                        
+                        <!-- Кнопки дій -->
+                        <group col="4" string="Дії">
+                            <button name="action_apply_filters" type="object" string="Переглянути всі документи" class="btn-primary"/>
+                            <button name="action_reset_filters" type="object" string="Скинути фільтри" class="btn-secondary"/>
+                            <button name="action_export_to_excel" type="object" string="Експорт в Excel" class="btn-info"/>
+                            <button name="action_quick_create" type="object" string="Швидке створення" class="btn-success"/>
+                        </group>
+                        
+                        <!-- Статистика -->
+                        <group col="4" string="Статистика">
+                            <field name="total_documents" readonly="1"/>
+                            <field name="total_receipts" readonly="1"/>
+                            <field name="total_disposals" readonly="1"/>
+                            <field name="total_returns" readonly="1"/>
+                            <field name="total_draft" readonly="1"/>
+                            <field name="total_posted" readonly="1"/>
+                        </group>
                     </sheet>
                 </form>
             </field>
         </record>
 
-        <!-- Дія для зведеної сторінки -->
+        <!-- List view для документів -->
+        <record id="view_stock_receipt_documents_line_list" model="ir.ui.view">
+            <field name="name">stock.receipt.documents.line.list</field>
+            <field name="model">stock.receipt.documents.line</field>
+            <field name="arch" type="xml">
+                <list string="Всі документи приходу" 
+                      create="false" 
+                      edit="false" 
+                      delete="false"
+                      decoration-info="state=='draft'"
+                      decoration-warning="state=='confirmed'"
+                      decoration-success="state in ['done', 'posted']"
+                      decoration-muted="state=='cancel'"
+                      sample="1">
+                    
+                    <field name="document_type_display" string="Тип операції"/>
+                    <field name="number" string="Номер"/>
+                    <field name="date" string="Дата"/>
+                    <field name="partner_name" string="Партнер/Сервіс"/>
+                    <field name="warehouse_name" string="Склад"/>
+                    <field name="total_qty" string="Кількість" sum="Загалом"/>
+                    <field name="amount_formatted" string="Вартість"/>
+                    <field name="created_by" string="Створено"/>
+                    <field name="posting_time_display" string="Час проведення"/>
+                    <field name="state" string="Статус" widget="badge"
+                        decoration-info="state=='draft'"
+                        decoration-warning="state=='confirmed'"
+                        decoration-success="state in ['done', 'posted']"
+                        decoration-danger="state=='cancel'"/>
+                    
+                    <!-- Приховані поля для роботи -->
+                    <field name="document_type" invisible="1"/>
+                    <field name="document_id" invisible="1"/>
+                    <field name="state_display" invisible="1"/>
+                    <field name="total_amount" invisible="1"/>
+                    <field name="posting_datetime" invisible="1"/>
+                    <field name="state_color" invisible="1"/>
+                    
+                    <!-- Кнопки дій -->
+                    <button name="action_open_document"
+                            type="object"
+                            string="Відкрити"
+                            class="btn-primary"
+                            icon="fa-external-link"/>
+                    <button name="action_duplicate_document"
+                            type="object"
+                            string="Копіювати"
+                            class="btn-secondary"
+                            icon="fa-copy"/>
+                    <button name="action_print_document"
+                            type="object"
+                            string="Друк"
+                            class="btn-info"
+                            icon="fa-print"/>
+                    <button name="action_post_document"
+                            type="object"
+                            string="Провести"
+                            class="btn-success"
+                            icon="fa-check"
+                            invisible="state != 'draft'"/>
+                    <button name="action_cancel_document"
+                            type="object"
+                            string="Скасувати"
+                            class="btn-danger"
+                            icon="fa-times"
+                            invisible="state == 'cancel'"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Дія для відображення всіх документів у вигляді таблиці -->
+        <record id="action_stock_receipt_all_documents" model="ir.actions.act_window">
+            <field name="name">Всі документи</field>
+            <field name="res_model">stock.receipt.documents.line</field>
+            <field name="view_mode">list</field>
+            <field name="view_id" ref="view_stock_receipt_documents_line_list"/>
+            <field name="search_view_id" ref="view_stock_receipt_documents_line_search"/>
+            <field name="target">current</field>
+            <field name="context">{'search_default_today': 1, 'create_documents': True}</field>
+            <field name="domain">[]</field>
+        </record>
+
+        <!-- Дія для зведеної сторінки (форма з фільтрами) -->
         <record id="action_stock_receipt_dashboard" model="ir.actions.act_window">
             <field name="name">Прихід</field>
             <field name="res_model">stock.receipt.dashboard</field>

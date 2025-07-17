@@ -38,6 +38,8 @@
                             <group>
                                 <button name="action_load_from_file" string="Завантажити з файлу" 
                                         type="object" class="btn-secondary" icon="fa-upload"/>
+                                <button name="remove_duplicates" string="Видалити дублікати" 
+                                        type="object" class="btn-warning" icon="fa-trash"/>
                             </group>
                         </group>
                         
@@ -71,55 +73,5 @@
             <field name="context">{'dialog_size': 'medium'}</field>
         </record>
 
-        <!-- Form View for stock.disposal.serial.duplicate.wizard -->
-        <record id="view_stock_disposal_serial_duplicate_wizard_form" model="ir.ui.view">
-            <field name="name">stock.disposal.serial.duplicate.wizard.form</field>
-            <field name="model">stock.disposal.serial.duplicate.wizard</field>
-            <field name="arch" type="xml">
-                <form string="Помилка затвердження">
-                    <sheet>
-                        <div class="alert alert-danger" role="alert">
-                            <i class="fa fa-exclamation-triangle"/> 
-                            <strong>Знайдено дублікати серійних номерів:</strong>
-                            <br/>
-                            <field name="duplicates" readonly="1" nolabel="1"/>
-                        </div>
-                        
-                        <div class="alert alert-info" role="alert">
-                            <i class="fa fa-info-circle"/> 
-                            Ви можете автоматично видалити дублікати, залишивши лише унікальні серійні номери, 
-                            або закрити це вікно і відредагувати список вручну.
-                        </div>
-                        
-                        <field name="parent_wizard_id" invisible="1"/>
-                    </sheet>
-                    <footer>
-                        <button name="action_remove_duplicates" string="Очистити дублікати" 
-                                type="object" class="btn-warning" icon="fa-trash"/>
-                        <button string="Закрити" class="btn-secondary" special="cancel"/>
-                    </footer>
-                </form>
-            </field>
-        </record>
-
-        <!-- Form View for stock.disposal.serial.import.wizard -->
-        <record id="view_stock_disposal_serial_import_wizard_form" model="ir.ui.view">
-            <field name="name">stock.disposal.serial.import.wizard.form</field>
-            <field name="model">stock.disposal.serial.import.wizard</field>
-            <field name="arch" type="xml">
-                <form string="Імпорт серійних номерів">
-                    <group>
-                        <field name="parent_wizard_id" invisible="1"/>
-                        <field name="file_data" filename="file_name" widget="binary"/>
-                        <field name="file_name" invisible="1"/>
-                    </group>
-                    <footer>
-                        <button name="action_import" string="Імпортувати" 
-                                type="object" class="btn-primary"/>
-                        <button string="Скасувати" class="btn-secondary" special="cancel"/>
-                    </footer>
-                </form>
-            </field>
-        </record>
     </data>
 </odoo>

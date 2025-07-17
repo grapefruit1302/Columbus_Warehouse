@@ -587,6 +587,12 @@ class StockDisposalPostingWizard(models.TransientModel):
             if posting_options and posting_options[0]:
                 res['posting_time'] = posting_options[0][0]
         
+        # Встановлюємо disposal_id з контексту
+        if self.env.context.get('active_id'):
+            res['disposal_id'] = self.env.context['active_id']
+        elif self.env.context.get('active_ids'):
+            res['disposal_id'] = self.env.context['active_ids'][0]
+        
         return res
     
     @api.constrains('custom_hour', 'custom_minute')
