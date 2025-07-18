@@ -208,6 +208,47 @@ class StockSerialReport(models.Model):
             return []
 
     @api.model
+    def web_read(self, ids, fields, specification):
+        """Override web_read to prevent _fetch_query errors"""
+        try:
+            if isinstance(specification, dict):
+                field_names = list(specification.keys())
+            else:
+                field_names = fields or []
+            
+            if ids:
+                records = self.browse(ids)
+                result = []
+                for record in records:
+                    record_data = {'id': record.id}
+                    for field in field_names:
+                        if hasattr(record, field):
+                            record_data[field] = getattr(record, field)
+                    result.append(record_data)
+                return result
+            else:
+                return []
+        except Exception as e:
+            _logger.error(f"Помилка в web_read для stock_serial_report: {e}")
+            return []
+
+    @api.model
+    def web_search_read(self, domain=None, fields=None, offset=0, limit=None, order=None, count_limit=None):
+        """Override web_search_read to use our custom search_read"""
+        try:
+            records = self.search_read(domain, fields, offset, limit, order)
+            return {
+                'records': records,
+                'length': len(records)
+            }
+        except Exception as e:
+            _logger.error(f"Помилка в web_search_read для stock_serial_report: {e}")
+            return {
+                'records': [],
+                'length': 0
+            }
+
+    @api.model
     def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
         """Перевизначаємо read_group для групування з перекладами"""
         try:
@@ -231,39 +272,35 @@ class StockSerialReport(models.Model):
 
     @api.model
     def _search(self, args, offset=0, limit=None, order=None, count=False, access_rights_uid=None):
-        """Перевизначаємо _search для кращої обробки помилок"""
+        """Simplified _search that avoids query building conflicts"""
         try:
-            # Отримуємо всі ID з view напряму через SQL
-            query = f"SELECT id FROM {self._table}"
-            where_clause = ""
             
-            # Обробляємо domain умови
+            sql = f"SELECT id FROM {self._table}"
+            params = []
+            
             if args:
-                conditions = []
+                where_conditions = []
                 for condition in args:
                     if len(condition) == 3:
                         field, operator, value = condition
-                        if operator == '=':
-                            conditions.append(f"{field} = '{value}'")
-                        elif operator == '!=':
-                            conditions.append(f"{field} != '{value}'")
-                        elif operator == 'ilike':
-                            conditions.append(f"{field} ILIKE '%{value}%'")
+                        if operator == '=' and field in ['id', 'nomenclature_id', 'company_id']:
+                            where_conditions.append(f"{field} = %s")
+                            params.append(value)
+                        elif operator == 'ilike' and field in ['nomenclature_name', 'serial_number']:
+                            where_conditions.append(f"{field} ILIKE %s")
+                            params.append(f'%{value}%')
                 
-                if conditions:
-                    where_clause = " WHERE " + " AND ".join(conditions)
-            
-            query += where_clause
+                if where_conditions:
+                    sql += " WHERE " + " AND ".join(where_conditions)
             
             if order:
-                query += f" ORDER BY {order}"
-            
+                sql += f" ORDER BY {order}"
             if limit:
-                query += f" LIMIT {limit}"
+                sql += f" LIMIT {limit}"
             if offset:
-                query += f" OFFSET {offset}"
+                sql += f" OFFSET {offset}"
             
-            self.env.cr.execute(query)
+            self.env.cr.execute(sql, params)
             
             if count:
                 return len(self.env.cr.fetchall())
@@ -272,20 +309,36 @@ class StockSerialReport(models.Model):
                 
         except Exception as e:
             _logger.error(f"Помилка в _search для stock_serial_report: {e}")
-            # Повертаємо порожній результат замість помилки
             return [] if not count else 0
 
-    @api.model
-    def search_fetch(self, domain, field_names, offset=0, limit=None, order=None):
-        """Перевизначаємо search_fetch для роботи з нашим _search"""
+    def read(self, fields=None, load='_classic_read'):
+        """Override read to handle _auto = False model properly"""
         try:
-            # Отримуємо ID через наш _search
-            ids = self._search(domain, offset=offset, limit=limit, order=order)
-            
-            # Повертаємо recordset
-            return self.browse(ids)
+            result = []
+            for record in self:
+                record_data = {'id': record.id}
+                if fields:
+                    for field in fields:
+                        if hasattr(record, field):
+                            value = getattr(record, field)
+                            if hasattr(value, 'id') and hasattr(value, 'name'):
+                                record_data[field] = [value.id, value.name] if value else False
+                            else:
+                                record_data[field] = value
+                        else:
+                            record_data[field] = False
+                else:
+                    for field_name in self._fields:
+                        if hasattr(record, field_name):
+                            value = getattr(record, field_name)
+                            if hasattr(value, 'id') and hasattr(value, 'name'):
+                                record_data[field_name] = [value.id, value.name] if value else False
+                            else:
+                                record_data[field_name] = value
+                result.append(record_data)
+            return result
         except Exception as e:
-            _logger.error(f"Помилка в search_fetch для stock_serial_report: {e}")
-            return self.browse([])
+            _logger.error(f"Помилка в read для stock_serial_report: {e}")
+            return []
 
 
