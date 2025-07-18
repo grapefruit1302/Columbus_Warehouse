@@ -7,12 +7,14 @@
             <field name="model">stock.receipt.documents.line</field>
             <field name="arch" type="xml">
                 <search string="Фільтри приходу">
-                    <field name="number" string="Номер" filter_domain="[('number', 'ilike', self)]"/>
-                    <field name="partner_name" string="Партнер" filter_domain="[('partner_name', 'ilike', self)]"/>
-                    <field name="warehouse_name" string="Склад" filter_domain="[('warehouse_name', 'ilike', self)]"/>
+                    <field name="number" string="Номер"/>
+                    <field name="partner_name" string="Постачальник"/>
+                    <field name="company_name" string="Компанія"/>
+                    <field name="warehouse_name" string="Склад"/>
                     
                     <filter string="Чернетки" name="draft" domain="[('state', '=', 'draft')]"/>
                     <filter string="Підтверджені" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                    <filter string="Проведені" name="posted" domain="[('state', '=', 'posted')]"/>
                     <filter string="Виконані" name="done" domain="[('state', '=', 'done')]"/>
                     <filter string="Скасовані" name="cancel" domain="[('state', '=', 'cancel')]"/>
                     
@@ -23,14 +25,15 @@
                     
                     <separator/>
                     <filter string="За сьогодні" name="today" domain="[('date', '>=', context_today()), ('date', '&lt;=', context_today())]"/>
-                    <filter string="За тиждень" name="week" domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
-                    <filter string="За місяць" name="month" domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="За тиждень" name="week" domain="[('date', '&gt;=', (context_today() - 7))]"/>
+                    <filter string="За місяць" name="month" domain="[('date', '&gt;=', (context_today() - 30))]"/>
                     
                     <group expand="0" string="Групувати за">
                         <filter string="Типом документа" name="group_document_type" context="{'group_by': 'document_type_display'}"/>
                         <filter string="Статусом" name="group_state" context="{'group_by': 'state'}"/>
                         <filter string="Складом" name="group_warehouse" context="{'group_by': 'warehouse_name'}"/>
-                        <filter string="Партнером" name="group_partner" context="{'group_by': 'partner_name'}"/>
+                        <filter string="Постачальником" name="group_partner" context="{'group_by': 'partner_name'}"/>
+                        <filter string="Компанією" name="group_company" context="{'group_by': 'company_name'}"/>
                         <filter string="Датою" name="group_date" context="{'group_by': 'date:day'}"/>
                     </group>
                 </search>
@@ -109,71 +112,41 @@
         </record>
 
         <!-- List view для документів -->
-        <record id="view_stock_receipt_documents_line_list" model="ir.ui.view">
-            <field name="name">stock.receipt.documents.line.list</field>
+        <record id="view_stock_receipt_documents_line_clean" model="ir.ui.view">
+            <field name="name">stock.receipt.documents.line.clean</field>
             <field name="model">stock.receipt.documents.line</field>
             <field name="arch" type="xml">
                 <list string="Всі документи приходу" 
                       create="false" 
                       edit="false" 
                       delete="false"
-                      decoration-info="state=='draft'"
-                      decoration-warning="state=='confirmed'"
-                      decoration-success="state in ['done', 'posted']"
-                      decoration-muted="state=='cancel'"
-                      sample="1">
+                      sample="1"
+                      action="action_open_document"
+                      type="object"
+                      default_order="date desc">
                     
-                    <field name="document_type_display" string="Тип операції"/>
+                    <field name="document_type_display" string="Тип операції" widget="badge"
+                           decoration-info="document_type=='receipt'"
+                           decoration-warning="document_type=='disposal'"
+                           decoration-success="document_type=='return'"/>
                     <field name="number" string="Номер"/>
-                    <field name="date" string="Дата"/>
-                    <field name="partner_name" string="Партнер/Сервіс"/>
+                    <field name="date" string="Дата" widget="datetime"/>
                     <field name="warehouse_name" string="Склад"/>
-                    <field name="total_qty" string="Кількість" sum="Загалом"/>
-                    <field name="amount_formatted" string="Вартість"/>
-                    <field name="created_by" string="Створено"/>
-                    <field name="posting_time_display" string="Час проведення"/>
+                    <field name="partner_name" string="Постачальник"/>
+                    <field name="company_name" string="Компанія"/>
                     <field name="state" string="Статус" widget="badge"
-                        decoration-info="state=='draft'"
-                        decoration-warning="state=='confirmed'"
-                        decoration-success="state in ['done', 'posted']"
-                        decoration-danger="state=='cancel'"/>
+                           decoration-info="state=='draft'"
+                           decoration-warning="state=='confirmed'"
+                           decoration-success="state in ['done', 'posted']"
+                           decoration-danger="state=='cancel'"/>
+                    <field name="total_qty" string="Кількість" sum="Total"/>
+                    <field name="amount_formatted" string="Сума"/>
+                    <field name="created_by" string="Створено"/>
                     
-                    <!-- Приховані поля для роботи -->
+                    <!-- Приховані поля тільки для роботи системи -->
                     <field name="document_type" invisible="1"/>
                     <field name="document_id" invisible="1"/>
-                    <field name="state_display" invisible="1"/>
                     <field name="total_amount" invisible="1"/>
-                    <field name="posting_datetime" invisible="1"/>
-                    <field name="state_color" invisible="1"/>
-                    
-                    <!-- Кнопки дій -->
-                    <button name="action_open_document"
-                            type="object"
-                            string="Відкрити"
-                            class="btn-primary"
-                            icon="fa-external-link"/>
-                    <button name="action_duplicate_document"
-                            type="object"
-                            string="Копіювати"
-                            class="btn-secondary"
-                            icon="fa-copy"/>
-                    <button name="action_print_document"
-                            type="object"
-                            string="Друк"
-                            class="btn-info"
-                            icon="fa-print"/>
-                    <button name="action_post_document"
-                            type="object"
-                            string="Провести"
-                            class="btn-success"
-                            icon="fa-check"
-                            invisible="state != 'draft'"/>
-                    <button name="action_cancel_document"
-                            type="object"
-                            string="Скасувати"
-                            class="btn-danger"
-                            icon="fa-times"
-                            invisible="state == 'cancel'"/>
                 </list>
             </field>
         </record>
@@ -183,10 +156,10 @@
             <field name="name">Всі документи</field>
             <field name="res_model">stock.receipt.documents.line</field>
             <field name="view_mode">list</field>
-            <field name="view_id" ref="view_stock_receipt_documents_line_list"/>
+            <field name="view_id" ref="view_stock_receipt_documents_line_clean"/>
             <field name="search_view_id" ref="view_stock_receipt_documents_line_search"/>
             <field name="target">current</field>
-            <field name="context">{'search_default_today': 1, 'create_documents': True}</field>
+            <field name="context">{}</field>
             <field name="domain">[]</field>
         </record>
 

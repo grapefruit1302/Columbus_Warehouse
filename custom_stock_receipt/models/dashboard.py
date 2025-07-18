@@ -1,16 +1,14 @@
-from odoo import models, fields, api, _
+from odoo import models, fields, api, tools, _
 from datetime import datetime, timedelta
 from odoo.exceptions import UserError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class StockReceiptDashboard(models.TransientModel):
     _name = 'stock.receipt.dashboard'
     _description = 'Зведена сторінка приходу товарів'
-    
-    # Поля для відображення всіх документів у таблиці (не використовується в новій реалізації)
-    # all_documents_ids = fields.One2many('stock.receipt.documents.line', 
-    #                                    'dashboard_id',
-    #                                    string='Всі документи')
     
     # Фільтри для пошуку
     filter_date_from = fields.Date('Дата з', default=fields.Date.today)
@@ -27,6 +25,9 @@ class StockReceiptDashboard(models.TransientModel):
         ('posted', 'Проведено'),
         ('confirmed', 'Підтверджено'),
         ('cancel', 'Скасовано')
+    
+    
+    
     ], 'Статус', default='all')
     filter_warehouse_id = fields.Many2one('stock.warehouse', 'Склад')
     
@@ -50,7 +51,6 @@ class StockReceiptDashboard(models.TransientModel):
     def default_get(self, fields):
         """Автоматично заповнюємо документи при створенні"""
         res = super().default_get(fields)
-        # Документи тепер створюються динамічно в StockReceiptDocumentsLine
         return res
     
     def _compute_statistics(self):
@@ -210,112 +210,88 @@ class StockReceiptDashboard(models.TransientModel):
                     'posting_time_display': ret._get_posting_time_label(ret.posting_time) if ret.posting_time else '-',
                 }))
         
-        # Сортуємо по даті (найновіші першими)
-        documents.sort(key=lambda x: x[2]['date'], reverse=True)
-        
         return documents
 
     def action_create_receipt(self):
-        """Створення нової прихідної накладної"""
+        """Створення прихідної накладної"""
         return {
             'type': 'ir.actions.act_window',
-            'name': 'Нова прихідна накладна',
+            'name': 'Прихідна накладна',
             'res_model': 'stock.receipt.incoming',
             'view_mode': 'form',
             'target': 'current',
-            'context': {'default_state': 'draft'},
+            'context': {'default_date': fields.Date.today()},
         }
-
+    
     def action_create_disposal(self):
-        """Створення нового акта оприходування"""
+        """Створення акту оприходування"""
         return {
             'type': 'ir.actions.act_window',
-            'name': 'Новий акт оприходування',
+            'name': 'Акт оприходування',
             'res_model': 'stock.receipt.disposal',
             'view_mode': 'form',
             'target': 'current',
-            'context': {'default_state': 'draft'},
+            'context': {'default_date': fields.Date.today()},
         }
-
+    
     def action_create_return(self):
-        """Створення нового повернення з сервісу"""
+        """Створення повернення з сервісу"""
         return {
             'type': 'ir.actions.act_window',
-            'name': 'Нове повернення з сервісу',
+            'name': 'Повернення з сервісу',
             'res_model': 'stock.receipt.return',
             'view_mode': 'form',
             'target': 'current',
-            'context': {'default_state': 'draft'},
+            'context': {'default_date': fields.Date.today()},
         }
 
 
-class StockReceiptDocumentsLine(models.TransientModel):
-    """Модель для рядків таблиці документів"""
+class StockReceiptDocumentsLine(models.Model):
+    """Модель для зведеної таблиці документів приходу"""
     _name = 'stock.receipt.documents.line'
-    _description = 'Рядок документа приходу'
+    _description = 'Зведена таблиця документів приходу'
     _order = 'date desc, id desc'
-
+    _rec_name = 'number'
+    _auto = False
+    
     document_type = fields.Selection([
         ('receipt', 'Прихідна накладна'),
         ('disposal', 'Акт оприходування'),
         ('return', 'Повернення з сервісу')
-    ], 'Тип документа')
-    document_type_display = fields.Char('Тип операції')
-    document_id = fields.Integer('ID документа')
-    number = fields.Char('Номер')
-    date = fields.Datetime('Дата')
-    partner_name = fields.Char('Партнер/Сервіс')
-    total_qty = fields.Float('Кількість')
-    total_amount = fields.Float('Загальна вартість')
+    ], 'Тип документа', readonly=True)
+    document_type_display = fields.Char('Тип операції', readonly=True)
+    document_id = fields.Integer('ID документа', readonly=True)
+    number = fields.Char('Номер', readonly=True)
+    date = fields.Datetime('Дата', readonly=True)
+    partner_name = fields.Char('Постачальник', readonly=True)
+    company_name = fields.Char('Компанія', readonly=True)
+    total_qty = fields.Float('Кількість', readonly=True)
+    total_amount = fields.Float('Загальна вартість', readonly=True)
     state = fields.Selection([
         ('draft', 'Чернетка'),
         ('posted', 'Проведено'),
         ('confirmed', 'Підтверджено'),
         ('done', 'Виконано'),
         ('cancel', 'Скасовано')
-    ], 'Статус')
-    state_display = fields.Char('Статус (відображення)')
-    warehouse_name = fields.Char('Склад')
-    created_by = fields.Char('Створено')
-    posting_datetime = fields.Datetime('Час проведення')
-    posting_time_display = fields.Char('Час проведення (відображення)')
-    
-    # Поля для кольорового кодування
-    priority = fields.Selection([
-        ('low', 'Низький'),
-        ('normal', 'Нормальний'),
-        ('high', 'Високий'),
-        ('urgent', 'Терміново')
-    ], 'Пріоритет', default='normal')
+    ], 'Статус', readonly=True)
+    warehouse_name = fields.Char('Склад', readonly=True)
+    created_by = fields.Char('Створено', readonly=True)
+    posting_datetime = fields.Datetime('Час проведення', readonly=True)
     
     # Computed поля для відображення
-    state_color = fields.Char('Колір статусу', compute='_compute_state_color')
-    amount_formatted = fields.Char('Сума (форматована)', compute='_compute_amount_formatted')
-    
-    @api.depends('state')
-    def _compute_state_color(self):
-        """Обчислюємо колір для статусу"""
-        color_map = {
-            'draft': 'muted',
-            'posted': 'info',
-            'confirmed': 'success',
-            'done': 'success',
-            'cancel': 'danger'
-        }
-        for line in self:
-            line.state_color = color_map.get(line.state, 'muted')
+    amount_formatted = fields.Char('Сума (форматована)', compute='_compute_amount_formatted', store=False)
     
     @api.depends('total_amount')
     def _compute_amount_formatted(self):
-        """Форматуємо суму для відображення"""
-        for line in self:
-            if line.total_amount:
-                line.amount_formatted = f"{line.total_amount:,.2f} грн"
+        """Форматує суму для відображення"""
+        for record in self:
+            if record.total_amount:
+                record.amount_formatted = f"{record.total_amount:,.2f} грн"
             else:
-                line.amount_formatted = "-"
-
+                record.amount_formatted = "-"
+    
     def action_open_document(self):
-        """Відкриває оригінальний документ"""
+        """Відкриває документ для редагування"""
         self.ensure_one()
         if not self.document_id:
             return {'type': 'ir.actions.act_window_close'}
@@ -338,186 +314,78 @@ class StockReceiptDocumentsLine(models.TransientModel):
             'target': 'current',
         }
     
-    def action_duplicate_document(self):
-        """Створює копію документа"""
-        self.ensure_one()
-        if not self.document_id:
-            return {'type': 'ir.actions.act_window_close'}
-            
-        model_map = {
-            'receipt': 'stock.receipt.incoming',
-            'disposal': 'stock.receipt.disposal',
-            'return': 'stock.receipt.return'
-        }
+    def init(self):
+        """Створює SQL view для зведеної таблиці"""
+        # Спочатку видаляємо view якщо він існує
+        self.env.cr.execute(f"DROP VIEW IF EXISTS {self._table} CASCADE")
         
-        if self.document_type not in model_map:
-            return {'type': 'ir.actions.act_window_close'}
+        # Потім видаляємо таблицю якщо вона існує
+        self.env.cr.execute(f"DROP TABLE IF EXISTS {self._table} CASCADE")
         
-        model = model_map[self.document_type]
-        original_doc = self.env[model].browse(self.document_id)
+        sql_query = """
+            CREATE OR REPLACE VIEW %s AS (
+                SELECT 
+                    'receipt_' || sri.id as id,
+                    'receipt' as document_type,
+                    'Прихідна накладна' as document_type_display,
+                    sri.id as document_id,
+                    sri.number,
+                    sri.date,
+                    rp.name as partner_name,
+                    rc.name as company_name,
+                    COALESCE(line_totals.total_qty, 0) as total_qty,
+                    COALESCE(line_totals.total_amount, 0) as total_amount,
+                    sri.state,
+                    sw.name as warehouse_name,
+                    up.name as created_by,
+                    sri.posting_datetime
+                FROM stock_receipt_incoming sri
+                LEFT JOIN res_partner rp ON sri.partner_id = rp.id
+                LEFT JOIN res_company rc ON sri.company_id = rc.id
+                LEFT JOIN stock_warehouse sw ON sri.warehouse_id = sw.id
+                LEFT JOIN res_users ru ON sri.create_uid = ru.id
+                LEFT JOIN res_partner up ON ru.partner_id = up.id
+                LEFT JOIN (
+                    SELECT 
+                        receipt_id,
+                        SUM(qty) as total_qty,
+                        SUM(qty * price_unit_no_vat) as total_amount
+                    FROM stock_receipt_incoming_line
+                    GROUP BY receipt_id
+                ) line_totals ON sri.id = line_totals.receipt_id
+                
+                UNION ALL
+                
+                SELECT 
+                    'disposal_' || srd.id as id,
+                    'disposal' as document_type,
+                    'Акт оприходування' as document_type_display,
+                    srd.id as document_id,
+                    srd.number,
+                    srd.date,
+                    '-' as partner_name,
+                    rc.name as company_name,
+                    COALESCE(line_totals.total_qty, 0) as total_qty,
+                    COALESCE(line_totals.total_amount, 0) as total_amount,
+                    srd.state,
+                    sw.name as warehouse_name,
+                    up2.name as created_by,
+                    srd.posting_datetime
+                FROM stock_receipt_disposal srd
+                LEFT JOIN res_company rc ON srd.company_id = rc.id
+                LEFT JOIN stock_warehouse sw ON srd.warehouse_id = sw.id
+                LEFT JOIN res_users ru2 ON srd.create_uid = ru2.id
+                LEFT JOIN res_partner up2 ON ru2.partner_id = up2.id
+                LEFT JOIN (
+                    SELECT 
+                        disposal_id,
+                        SUM(qty) as total_qty,
+                        SUM(qty * price_unit_no_vat) as total_amount
+                    FROM stock_receipt_disposal_line
+                    GROUP BY disposal_id
+                ) line_totals ON srd.id = line_totals.disposal_id
+                
+            )
+        """ % self._table
         
-        if not original_doc.exists():
-            return {'type': 'ir.actions.act_window_close'}
-        
-        # Створюємо копію
-        new_doc = original_doc.copy()
-        
-        return {
-            'type': 'ir.actions.act_window',
-            'name': f'Копія {self.document_type_display}',
-            'res_model': model,
-            'res_id': new_doc.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
-    
-    def action_print_document(self):
-        """Друк документа"""
-        self.ensure_one()
-        model_map = {
-            'receipt': 'stock.receipt.incoming',
-            'disposal': 'stock.receipt.disposal',
-            'return': 'stock.receipt.return'
-        }
-        
-        model = model_map[self.document_type]
-        document = self.env[model].browse(self.document_id)
-        
-        return document.action_print_document()
-    
-    def action_post_document(self):
-        """Проведення документа"""
-        self.ensure_one()
-        model_map = {
-            'receipt': 'stock.receipt.incoming',
-            'disposal': 'stock.receipt.disposal',
-            'return': 'stock.receipt.return'
-        }
-        
-        model = model_map[self.document_type]
-        document = self.env[model].browse(self.document_id)
-        
-        if document.state == 'draft':
-            return document.action_post()
-        else:
-            raise UserError(_('Документ можна проводити тільки зі статусом "Чернетка"'))
-    
-    def action_cancel_document(self):
-        """Скасування документа"""
-        self.ensure_one()
-        model_map = {
-            'receipt': 'stock.receipt.incoming',
-            'disposal': 'stock.receipt.disposal',
-            'return': 'stock.receipt.return'
-        }
-        
-        model = model_map[self.document_type]
-        document = self.env[model].browse(self.document_id)
-        
-        return document.action_cancel()
-    
-    @api.model
-    def create_all_documents(self):
-        """Створюємо всі документи в транзієнтній моделі"""
-        # Спочатку видаляємо всі існуючі записи
-        self.search([]).unlink()
-        
-        # Прихідні накладні
-        receipts = self.env['stock.receipt.incoming'].search([], order='date desc')
-        for receipt in receipts:
-            total_qty = sum(line.qty for line in receipt.line_ids)
-            total_amount = sum(line.qty * line.price_unit_no_vat for line in receipt.line_ids)
-            
-            self.create({
-                'document_type': 'receipt',
-                'document_type_display': 'Прихідна накладна',
-                'document_id': receipt.id,
-                'number': receipt.number,
-                'date': receipt.date,
-                'partner_name': receipt.partner_id.name if receipt.partner_id else '-',
-                'total_qty': total_qty,
-                'total_amount': total_amount,
-                'state': receipt.state,
-                'state_display': dict(receipt._fields['state'].selection)[receipt.state],
-                'warehouse_name': receipt.warehouse_id.name if receipt.warehouse_id else '-',
-                'created_by': receipt.create_uid.name if receipt.create_uid else '-',
-                'posting_datetime': receipt.posting_datetime,
-                'posting_time_display': receipt._get_posting_time_label(receipt.posting_time) if receipt.posting_time else '-',
-                'amount_formatted': f"{total_amount:,.2f} грн" if total_amount else "-",
-                'state_color': self._get_state_color(receipt.state),
-                'priority': 'normal',
-            })
-        
-        # Акти оприходування
-        disposals = self.env['stock.receipt.disposal'].search([], order='date desc')
-        for disposal in disposals:
-            total_qty = sum(line.qty for line in disposal.line_ids)
-            total_amount = sum(line.qty * line.price_unit_no_vat for line in disposal.line_ids)
-            
-            self.create({
-                'document_type': 'disposal',
-                'document_type_display': 'Акт оприходування',
-                'document_id': disposal.id,
-                'number': disposal.number,
-                'date': disposal.date,
-                'partner_name': '-',
-                'total_qty': total_qty,
-                'total_amount': total_amount,
-                'state': disposal.state,
-                'state_display': dict(disposal._fields['state'].selection)[disposal.state],
-                'warehouse_name': disposal.warehouse_id.name if disposal.warehouse_id else '-',
-                'created_by': disposal.create_uid.name if disposal.create_uid else '-',
-                'posting_datetime': disposal.posting_datetime,
-                'posting_time_display': disposal._get_posting_time_label(disposal.posting_time) if disposal.posting_time else '-',
-                'amount_formatted': f"{total_amount:,.2f} грн" if total_amount else "-",
-                'state_color': self._get_state_color(disposal.state),
-                'priority': 'normal',
-            })
-        
-        # Повернення з сервісу
-        returns = self.env['stock.receipt.return'].search([], order='date desc')
-        for ret in returns:
-            total_qty = sum(line.qty for line in ret.line_ids)
-            total_amount = sum(line.qty * line.price_unit_no_vat for line in ret.line_ids)
-            
-            self.create({
-                'document_type': 'return',
-                'document_type_display': 'Повернення з сервісу',
-                'document_id': ret.id,
-                'number': ret.number,
-                'date': ret.date,
-                'partner_name': ret.service_partner_id.name if ret.service_partner_id else '-',
-                'total_qty': total_qty,
-                'total_amount': total_amount,
-                'state': ret.state,
-                'state_display': dict(ret._fields['state'].selection)[ret.state],
-                'warehouse_name': ret.warehouse_id.name if ret.warehouse_id else '-',
-                'created_by': ret.create_uid.name if ret.create_uid else '-',
-                'posting_datetime': ret.posting_datetime,
-                'posting_time_display': ret._get_posting_time_label(ret.posting_time) if ret.posting_time else '-',
-                'amount_formatted': f"{total_amount:,.2f} грн" if total_amount else "-",
-                'state_color': self._get_state_color(ret.state),
-                'priority': 'normal',
-            })
-        
-        return True
-    
-    def _get_state_color(self, state):
-        """Повертає колір для статусу"""
-        color_map = {
-            'draft': 'muted',
-            'posted': 'info',
-            'confirmed': 'success',
-            'done': 'success',
-            'cancel': 'danger'
-        }
-        return color_map.get(state, 'muted')
-    
-    @api.model
-    def search_read(self, domain=None, fields=None, offset=0, limit=None, order=None):
-        """Переопределяем search_read для автоматичного створення документів"""
-        # Якщо в контексті є create_documents, створюємо документи
-        if self.env.context.get('create_documents'):
-            self.create_all_documents()
-        
-        return super().search_read(domain, fields, offset, limit, order)
+        self.env.cr.execute(sql_query)
