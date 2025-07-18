@@ -22,7 +22,6 @@
                             <field name="qty_on_hand" readonly="1"/>
                             <field name="qty_available" readonly="1"/>
                             <field name="uom_id" readonly="1"/>
-                            <field name="serial_count" readonly="1"/>
                             <field name="last_update" readonly="1"/>
                         </group>
                     </group>
@@ -75,16 +74,13 @@
                 
                 <!-- Індикатор серійних номерів і кнопка перегляду -->
                 <field name="serial_numbers" invisible="1"/>
-                <field name="serial_count" string="S/N" 
-                    decoration-info="serial_count > 0"
-                    decoration-muted="serial_count == 0"/>
                 
                 <!-- Кнопка для перегляду серійних номерів -->
                 <button name="action_view_serials" type="object" 
                         string="Переглянути S/N" 
                         icon="fa-barcode" 
                         class="btn btn-sm btn-primary"
-                        invisible="serial_count == 0"
+                        invisible="not serial_numbers"
                         title="Переглянути серійні номери"/>
                 
                 <field name="last_update" optional="hide" widget="datetime"/>
@@ -321,4 +317,5 @@
         <field name="view_mode">graph,pivot</field>
         <field name="context">{'search_default_this_month': 1}</field>
     </record>
+
 </odoo>

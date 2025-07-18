@@ -58,7 +58,8 @@ class StockBatch(models.Model):
     
     current_qty = fields.Float(
         'Поточна кількість', 
-        required=True,
+        compute='_compute_current_qty',
+        store=True,
         digits='Product Unit of Measure',
         tracking=True
     )
@@ -153,9 +154,22 @@ class StockBatch(models.Model):
          'Кількості мають бути не менше нуля, початкова кількість більше нуля!'),
     ]
 
+    @api.depends('initial_qty', 'nomenclature_id.tracking_serial', 'serial_numbers')
+    def _compute_current_qty(self):
+        """Обчислює поточну кількість на основі серійних номерів або початкової кількості"""
+        for batch in self:
+            # Якщо товар обліковується по серійних номерах
+            if batch.nomenclature_id.tracking_serial:
+                # Поточна кількість = кількість серійних номерів
+                batch.current_qty = len(batch._get_serial_numbers_list())
+            else:
+                # Для звичайних товарів - поточна кількість = початкова (поки що без списання)
+                batch.current_qty = batch.initial_qty
+
     @api.depends('current_qty', 'reserved_qty')
     def _compute_available_qty(self):
         for batch in self:
+            # Доступна кількість = поточна - зарезервована
             batch.available_qty = batch.current_qty - batch.reserved_qty
 
     @api.depends('current_qty', 'expiry_date', 'is_active')
@@ -203,7 +217,6 @@ class StockBatch(models.Model):
             'source_document_type': 'receipt',
             'source_document_number': receipt_number,
             'initial_qty': qty,
-            'current_qty': qty,
             'uom_id': uom_id,
             'location_id': location_id,
             'company_id': company_id,
@@ -371,6 +384,19 @@ class StockBatch(models.Model):
             body=_('Партію розблоковано'),
             message_type='notification'
         )
+
+    def _get_serial_numbers_list(self):
+        """Повертає список серійних номерів з партії"""
+        if not self.serial_numbers:
+            return []
+        
+        serials = []
+        for line in self.serial_numbers.split('\n'):
+            for serial in line.split(','):
+                serial = serial.strip()
+                if serial:
+                    serials.append(serial)
+        return serials
 
     @api.constrains('batch_number', 'nomenclature_id')
     def _check_unique_batch_number(self):

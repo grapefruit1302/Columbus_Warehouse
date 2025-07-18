@@ -17,7 +17,6 @@
                            decoration-warning="location_type == 'employee'"/>
                     <field name="warehouse_name" string="Склад" optional="show"/>
                     <field name="employee_name" string="Працівник" optional="show"/>
-                    <field name="qty_available" string="Доступна к-сть" optional="hide"/>
                     <field name="company_id" string="Компанія" groups="base.group_multi_company" optional="hide"/>
                 </list>
             </field>
