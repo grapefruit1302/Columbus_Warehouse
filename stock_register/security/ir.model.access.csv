@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stock_balance_register_user,stock.balance.register.user,model_stock_balance_register,base.group_user,1,0,0,0
+access_stock_balance_register_manager,stock.balance.register.manager,model_stock_balance_register,stock.group_stock_manager,1,1,1,1
+access_stock_batch_adapter_user,stock.batch.user,model_stock_batch,base.group_user,1,0,0,0  
+access_stock_batch_adapter_manager,stock.batch.manager,model_stock_batch,stock.group_stock_manager,1,1,1,1
+access_stock_balance_adapter_user,stock.balance.user,model_stock_balance,base.group_user,1,0,0,0
+access_stock_balance_adapter_manager,stock.balance.manager,model_stock_balance,stock.group_stock_manager,1,1,1,1

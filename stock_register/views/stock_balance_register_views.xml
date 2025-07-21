@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Register List View -->
+    <record id="view_stock_balance_register_tree" model="ir.ui.view">
+        <field name="name">stock.balance.register.tree</field>
+        <field name="model">stock.balance.register</field>
+        <field name="arch" type="xml">
+            <tree string="Регістр накопичення залишків" default_order="period desc" decoration-success="quantity > 0" decoration-danger="quantity &lt; 0">
+                <field name="period"/>
+                <field name="nomenclature_id"/>
+                <field name="warehouse_id"/>
+                <field name="location_id"/>
+                <field name="batch_number"/>
+                <field name="serial_number"/>
+                <field name="employee_id"/>
+                <field name="quantity" sum="Загальна кількість"/>
+                <field name="uom_id"/>
+                <field name="operation_type"/>
+                <field name="document_reference"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Register Form View -->
+    <record id="view_stock_balance_register_form" model="ir.ui.view">
+        <field name="name">stock.balance.register.form</field>
+        <field name="model">stock.balance.register</field>
+        <field name="arch" type="xml">
+            <form string="Запис регістра накопичення">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group name="period">
+                            <field name="period"/>
+                            <field name="operation_type"/>
+                            <field name="active"/>
+                        </group>
+                        <group name="document">
+                            <field name="document_reference"/>
+                            <field name="recorder_type"/>
+                            <field name="recorder_id"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Виміри (Измерения)">
+                        <group name="dimensions1">
+                            <field name="nomenclature_id" required="1"/>
+                            <field name="warehouse_id"/>
+                            <field name="location_id"/>
+                            <field name="batch_number"/>
+                        </group>
+                        <group name="dimensions2">
+                            <field name="serial_number"/>
+                            <field name="employee_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Ресурси (Ресурсы)">
+                        <group>
+                            <field name="quantity" required="1"/>
+                            <field name="uom_id" required="1"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Додатково">
+                        <field name="notes" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Register Search View -->
+    <record id="view_stock_balance_register_search" model="ir.ui.view">
+        <field name="name">stock.balance.register.search</field>
+        <field name="model">stock.balance.register</field>
+        <field name="arch" type="xml">
+            <search string="Пошук в регістрі">
+                <field name="nomenclature_id"/>
+                <field name="warehouse_id"/>
+                <field name="location_id"/>
+                <field name="batch_number"/>
+                <field name="serial_number"/>
+                <field name="employee_id"/>
+                <field name="document_reference"/>
+                <field name="operation_type"/>
+                
+                <filter string="Надходження" name="receipts" domain="[('quantity', '>', 0)]"/>
+                <filter string="Списання" name="disposals" domain="[('quantity', '&lt;', 0)]"/>
+                <filter string="Активні записи" name="active" domain="[('active', '=', True)]"/>
+                
+                <separator/>
+                <filter string="Сьогодні" name="today" domain="[('period', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))), ('period', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23,59,59)))]"/>
+                <filter string="Цього тижня" name="this_week" domain="[('period', '&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                <filter string="Цього місяця" name="this_month" domain="[('period', '&gt;=', context_today().strftime('%Y-%m-01'))]"/>
+                
+                <separator/>
+                <group expand="0" string="Групування">
+                    <filter string="За номенклатурою" name="group_nomenclature" context="{'group_by': 'nomenclature_id'}"/>
+                    <filter string="За складом" name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter string="За партією" name="group_batch" context="{'group_by': 'batch_number'}"/>
+                    <filter string="За типом операції" name="group_operation" context="{'group_by': 'operation_type'}"/>
+                    <filter string="За періодом (день)" name="group_period_day" context="{'group_by': 'period:day'}"/>
+                    <filter string="За періодом (місяць)" name="group_period_month" context="{'group_by': 'period:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Register Pivot View -->
+    <record id="view_stock_balance_register_pivot" model="ir.ui.view">
+        <field name="name">stock.balance.register.pivot</field>
+        <field name="model">stock.balance.register</field>
+        <field name="arch" type="xml">
+            <pivot string="Аналіз регістра накопичення">
+                <field name="period" type="row" interval="month"/>
+                <field name="nomenclature_id" type="row"/>
+                <field name="warehouse_id" type="col"/>
+                <field name="quantity" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Register Graph View -->  
+    <record id="view_stock_balance_register_graph" model="ir.ui.view">
+        <field name="name">stock.balance.register.graph</field>
+        <field name="model">stock.balance.register</field>
+        <field name="arch" type="xml">
+            <graph string="Графік регістра накопичення">
+                <field name="period" type="row" interval="day"/>
+                <field name="quantity" type="measure"/>
+                <field name="warehouse_id" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Main Action -->
+    <record id="action_stock_balance_register" model="ir.actions.act_window">
+        <field name="name">Регістр накопичення залишків</field>
+        <field name="res_model">stock.balance.register</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="domain">[]</field>
+        <field name="context">{
+            'search_default_active': 1,
+            'search_default_this_month': 1,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Регістр накопичення залишків пустий
+            </p>
+            <p>
+                Регістр накопичення автоматично заповнюється при проведенні документів.
+                <br/>
+                Кожен запис містить виміри (номенклатура, склад, партія) та ресурси (кількість).
+            </p>
+        </field>
+    </record>
+
+    <!-- Balance Analysis Action -->
+    <record id="action_stock_balance_analysis" model="ir.actions.act_window">
+        <field name="name">Аналіз залишків</field>
+        <field name="res_model">stock.balance.register</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="domain">[('active', '=', True)]</field>
+        <field name="context">{
+            'search_default_group_nomenclature': 1,
+            'search_default_group_warehouse': 1,
+        }</field>
+    </record>
+
+    <!-- Batch Analysis Action -->
+    <record id="action_stock_batch_analysis" model="ir.actions.act_window">
+        <field name="name">Аналіз партій</field>
+        <field name="res_model">stock.balance.register</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="domain">[('active', '=', True), ('quantity', '>', 0)]</field>
+        <field name="context">{
+            'search_default_group_batch': 1,
+            'search_default_group_nomenclature': 1,
+        }</field>
+    </record>
+</odoo>

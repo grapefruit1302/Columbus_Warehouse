@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Balance Sheet Wizard Views -->
+    <record id="view_stock_balance_sheet_wizard_form" model="ir.ui.view">
+        <field name="name">stock.balance.sheet.wizard.form</field>
+        <field name="model">stock.balance.sheet.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Оборотно-сальдова відомість">
+                <group>
+                    <group name="period">
+                        <field name="date_from" required="1"/>
+                        <field name="date_to" required="1"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                    <group name="filters">
+                        <field name="group_by" required="1"/>
+                        <field name="include_zero_balances"/>
+                    </group>
+                </group>
+                
+                <group string="Фільтри">
+                    <field name="nomenclature_ids" widget="many2many_tags"/>
+                    <field name="warehouse_ids" widget="many2many_tags"/>
+                </group>
+                
+                <footer>
+                    <button name="generate_report" string="Сформувати звіт" type="object" class="btn-primary"/>
+                    <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Balance Sheet Line Views -->
+    <record id="view_stock_balance_sheet_line_tree" model="ir.ui.view">
+        <field name="name">stock.balance.sheet.line.tree</field>
+        <field name="model">stock.balance.sheet.line</field>
+        <field name="arch" type="xml">
+            <tree string="Оборотно-сальдова відомість" create="false" edit="false" delete="false">
+                <field name="nomenclature_name"/>
+                <field name="warehouse_name"/>
+                <field name="batch_number"/>
+                <field name="balance_start" sum="Початковий залишок"/>
+                <field name="receipt_total" sum="Надходження"/>
+                <field name="disposal_total" sum="Списання"/>
+                <field name="balance_end" sum="Кінцевий залишок"/>
+                <field name="uom_name"/>
+                <field name="nomenclature_id" invisible="1"/>
+                <field name="warehouse_id" invisible="1"/>
+                <field name="group_type" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_balance_sheet_line_search" model="ir.ui.view">
+        <field name="name">stock.balance.sheet.line.search</field>
+        <field name="model">stock.balance.sheet.line</field>
+        <field name="arch" type="xml">
+            <search string="Пошук в звіті">
+                <field name="nomenclature_name"/>
+                <field name="warehouse_name"/>
+                <field name="batch_number"/>
+                
+                <filter string="З залишком на початок" name="has_start_balance" domain="[('balance_start', '!=', 0)]"/>
+                <filter string="З надходженнями" name="has_receipts" domain="[('receipt_total', '>', 0)]"/>
+                <filter string="Зі списаннями" name="has_disposals" domain="[('disposal_total', '>', 0)]"/>
+                <filter string="З залишком на кінець" name="has_end_balance" domain="[('balance_end', '!=', 0)]"/>
+                
+                <separator/>
+                <group expand="0" string="Групування">
+                    <filter string="За номенклатурою" name="group_nomenclature" context="{'group_by': 'nomenclature_name'}"/>
+                    <filter string="За складом" name="group_warehouse" context="{'group_by': 'warehouse_name'}"/>
+                    <filter string="За партією" name="group_batch" context="{'group_by': 'batch_number'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Batch Movement Wizard Views -->
+    <record id="view_stock_batch_movement_wizard_form" model="ir.ui.view">
+        <field name="name">stock.batch.movement.wizard.form</field>
+        <field name="model">stock.batch.movement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Рух партій">
+                <group>
+                    <group name="period">
+                        <field name="date_from" required="1"/>
+                        <field name="date_to" required="1"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                    <group name="filters">
+                        <field name="batch_numbers" placeholder="Номери партій через кому"/>
+                    </group>
+                </group>
+                
+                <group string="Фільтри">
+                    <field name="nomenclature_ids" widget="many2many_tags"/>
+                    <field name="warehouse_ids" widget="many2many_tags"/>
+                </group>
+                
+                <footer>
+                    <button name="generate_report" string="Сформувати звіт" type="object" class="btn-primary"/>
+                    <button string="Скасувати" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Report Actions -->
+    <record id="action_balance_sheet_report" model="ir.actions.act_window">
+        <field name="name">Оборотно-сальдова відомість</field>
+        <field name="res_model">stock.balance.sheet.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="action_batch_movement_report" model="ir.actions.act_window">
+        <field name="name">Рух партій</field>
+        <field name="res_model">stock.batch.movement.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
