@@ -5,3 +5,10 @@ access_stock_batch_adapter_user,stock.batch.user,model_stock_batch,base.group_us
 access_stock_batch_adapter_manager,stock.batch.manager,model_stock_batch,stock.group_stock_manager,1,1,1,1
 access_stock_balance_adapter_user,stock.balance.user,model_stock_balance,base.group_user,1,0,0,0
 access_stock_balance_adapter_manager,stock.balance.manager,model_stock_balance,stock.group_stock_manager,1,1,1,1
+access_stock_batch_virtual_user,stock.batch.virtual.user,model_stock_batch_virtual,base.group_user,1,0,0,0
+access_stock_batch_virtual_manager,stock.batch.virtual.manager,model_stock_batch_virtual,stock.group_stock_manager,1,0,0,0
+access_batch_movement_virtual_user,batch.movement.virtual.user,model_batch_movement_virtual,base.group_user,1,0,0,0
+access_batch_movement_virtual_manager,batch.movement.virtual.manager,model_batch_movement_virtual,stock.group_stock_manager,1,0,0,0
+access_stock_balance_sheet_wizard_manager,stock.balance.sheet.wizard.manager,model_stock_balance_sheet_wizard,stock.group_stock_manager,1,1,1,1
+access_stock_balance_sheet_line_manager,stock.balance.sheet.line.manager,model_stock_balance_sheet_line,stock.group_stock_manager,1,1,1,1
+access_stock_batch_movement_wizard_manager,stock.batch.movement.wizard.manager,model_stock_batch_movement_wizard,stock.group_stock_manager,1,1,1,1

@@ -28,6 +28,7 @@
         'security/ir.model.access.csv',
         'views/stock_balance_register_views.xml',
         'views/stock_register_reports_views.xml',
+        'views/stock_batch_virtual_views.xml',
         'views/menu_views.xml',
     ],
     'demo': [],

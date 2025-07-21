@@ -273,3 +273,31 @@ class StockBatchMovementWizard(models.TransientModel):
             },
             'target': 'current',
         }
+
+    def generate_batch_analysis(self):
+        """Генерує аналіз партій через віртуальну модель"""
+        domain = []
+        
+        if self.nomenclature_ids:
+            domain.append(('nomenclature_id', 'in', self.nomenclature_ids.ids))
+            
+        if self.warehouse_ids:
+            domain.append(('warehouse_id', 'in', self.warehouse_ids.ids))
+            
+        if self.batch_numbers:
+            batch_list = [b.strip() for b in self.batch_numbers.split(',') if b.strip()]
+            if batch_list:
+                domain.append(('batch_number', 'in', batch_list))
+        
+        return {
+            'name': _('Аналіз партій'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.batch.virtual',
+            'view_mode': 'tree,form',
+            'domain': domain,
+            'context': {
+                'search_default_active': 1,
+                'search_default_group_nomenclature': 1,
+            },
+            'target': 'current',
+        }
