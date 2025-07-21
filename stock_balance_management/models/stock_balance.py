@@ -164,6 +164,12 @@ class StockBalance(models.Model):
         }
         return mapping.get(doc_type, doc_type or '')
 
+    # ДОДАЙТЕ поле:
+    serial_count = fields.Integer(
+        'Кількість S/N', 
+        compute='_compute_serial_count',
+        help='Кількість серійних номерів'
+    )
 
 
     def action_view_serials(self):
@@ -234,25 +240,11 @@ class StockBalance(models.Model):
                     serials.append(serial)
         return serials
 
-    @api.depends('qty_on_hand', 'nomenclature_id.tracking_serial', 'serial_numbers')
+    @api.depends('qty_on_hand')
     def _compute_available_qty(self):
-        """Обчислює доступну кількість товару з урахуванням серійних номерів"""
+        """Поки що доступна кількість = фізичній (без резервування)"""
         for balance in self:
-            _logger.info(f"🔄 Computing qty_available for {balance.nomenclature_id.name}")
-            _logger.info(f"   📊 qty_on_hand: {balance.qty_on_hand}")
-            _logger.info(f"   🏷️ tracking_serial: {balance.nomenclature_id.tracking_serial}")
-            _logger.info(f"   📋 serial_numbers: {balance.serial_numbers}")
-            
-            # Якщо товар обліковується по серійних номерах
-            if balance.nomenclature_id.tracking_serial:
-                # Доступна кількість = кількість серійних номерів
-                serial_count = len(balance._get_serial_numbers_list())
-                balance.qty_available = serial_count
-                _logger.info(f"   ✅ Serial tracking: qty_available = {serial_count}")
-            else:
-                # Для звичайних товарів - доступна кількість = фізичній кількості
-                balance.qty_available = balance.qty_on_hand
-                _logger.info(f"   ✅ Regular tracking: qty_available = {balance.qty_on_hand}")
+            balance.qty_available = balance.qty_on_hand
 
 
     def _get_serial_numbers_list(self):
@@ -483,7 +475,6 @@ class StockBalance(models.Model):
             'domain': domain,
             'context': {'create': False},
         }
-
 
 
 class StockBalanceSerialLine(models.TransientModel):

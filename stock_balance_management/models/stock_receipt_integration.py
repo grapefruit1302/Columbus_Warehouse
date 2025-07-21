@@ -51,10 +51,10 @@ class StockReceiptIncoming(models.Model):
         
         # ДЕТАЛЬНИЙ АНАЛІЗ серійних номерів
         _logger.info(f"🔍 DETAILED SERIAL ANALYSIS for {line.nomenclature_id.name}:")
-        _logger.info(f"   📋 line.serial_numbers: '{getattr(line, 'serial_numbers', 'FIELD_NOT_FOUND')}'")
+        _logger.info(f"   📋 line.serial_numbers: '{line.serial_numbers}'")
         _logger.info(f"   🏷️ tracking_serial: {line.nomenclature_id.tracking_serial}")
-        _logger.info(f"   📝 serial_numbers type: {type(getattr(line, 'serial_numbers', None))}")
-        _logger.info(f"   📏 serial_numbers length: {len(getattr(line, 'serial_numbers', '')) if getattr(line, 'serial_numbers', None) else 0}")
+        _logger.info(f"   📝 serial_numbers type: {type(line.serial_numbers)}")
+        _logger.info(f"   📏 serial_numbers length: {len(line.serial_numbers) if line.serial_numbers else 0}")
         
         # Шукаємо партію (може бути створена batch модулем)
         batch = self.env['stock.batch'].search([
@@ -69,7 +69,7 @@ class StockReceiptIncoming(models.Model):
             # ПОКРАЩЕНА логіка обробки серійних номерів
             serial_numbers_to_pass = None
             
-            if hasattr(line, 'serial_numbers') and line.serial_numbers:
+            if line.serial_numbers:
                 # Очищаємо від зайвих пробілів та порожніх рядків
                 cleaned_serials = line.serial_numbers.strip()
                 if cleaned_serials:
@@ -196,7 +196,7 @@ class StockReceiptDisposal(models.Model):
         
         # ДЕТАЛЬНИЙ АНАЛІЗ серійних номерів
         _logger.info(f"🔍 DETAILED SERIAL ANALYSIS for {line.nomenclature_id.name}:")
-        _logger.info(f"   📋 line.serial_numbers: '{getattr(line, 'serial_numbers', 'FIELD_NOT_FOUND')}'")
+        _logger.info(f"   📋 line.serial_numbers: '{line.serial_numbers}'")
         _logger.info(f"   🏷️ tracking_serial: {line.nomenclature_id.tracking_serial}")
         
         # Шукаємо партію (може бути створена batch модулем)
