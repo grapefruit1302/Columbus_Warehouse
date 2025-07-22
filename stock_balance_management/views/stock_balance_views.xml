@@ -38,6 +38,20 @@
                             </list>
                         </field>
                     </group>
+                    <notebook>
+                        <page string="Серійні номери">
+                            <field name="serial_line_ids" readonly="1"/>
+                        </page>
+                        <page string="Історія змін">
+                            <field name="nomenclature_id" invisible="1"/>
+                            <field name="batch_id" invisible="1"/>
+                            <field name="warehouse_id" invisible="1"/>
+                            <field name="employee_id" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="location_type" invisible="1"/>
+                            <field name="stock_balance_movement_ids" context="{'default_nomenclature_id': nomenclature_id, 'default_batch_id': batch_id, 'default_warehouse_id': warehouse_id, 'default_employee_id': employee_id, 'default_company_id': company_id, 'default_location_type': location_type}" readonly="1"/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -169,6 +183,8 @@
                             <field name="operation_type" readonly="1"/>
                             <field name="qty" readonly="1"/>
                             <field name="uom_id" readonly="1"/>
+                            <field name="balance_before" readonly="1"/>
+                            <field name="balance_after" readonly="1"/>
                         </group>
                         <group name="meta_info">
                             <field name="date" readonly="1"/>

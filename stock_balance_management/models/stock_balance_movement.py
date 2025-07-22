@@ -113,6 +113,16 @@ class StockBalanceMovement(models.Model):
         store=True
     )
 
+    balance_before = fields.Float('Залишок до', readonly=True)
+    balance_after = fields.Float('Залишок після', readonly=True)
+    balance_id = fields.Many2one(
+        'stock.balance',
+        string='Залишок',
+        readonly=True,
+        ondelete='set null',
+        index=True
+    )
+
     @api.depends('movement_type', 'operation_type', 'nomenclature_id', 'qty', 'date')
     def _compute_display_name(self):
         for movement in self:
@@ -140,18 +150,37 @@ class StockBalanceMovement(models.Model):
                        location_from_id=None, location_to_id=None,
                        batch_id=None, uom_id=None, document_reference=None,
                        notes=None, serial_numbers=None, company_id=None, date=None):
-        """Створює рух залишків та оновлює баланси"""
-        
+        """Створює рух залишків та оновлює баланси, зберігає залишок до/після"""
         if company_id is None:
             company_id = self.env.company.id
-        
         if uom_id is None:
             nomenclature = self.env['product.nomenclature'].browse(nomenclature_id)
             uom_id = nomenclature.base_uom_id.id
-        
         if date is None:
             date = fields.Datetime.now()
-        
+
+        # Визначаємо залишок до руху
+        Balance = self.env['stock.balance']
+        domain = [
+            ('nomenclature_id', '=', nomenclature_id),
+            ('company_id', '=', company_id),
+        ]
+        if location_from_type == 'warehouse':
+            domain += [('location_type', '=', 'warehouse'), ('warehouse_id', '=', warehouse_from_id)]
+            if location_from_id:
+                domain += [('location_id', '=', location_from_id)]
+        elif location_from_type == 'employee':
+            domain += [('location_type', '=', 'employee'), ('employee_id', '=', employee_from_id)]
+        if batch_id:
+            domain += [('batch_id', '=', batch_id)]
+        else:
+            domain += [('batch_id', '=', False)]
+        balance_before = 0.0
+        balance_after = 0.0
+        # Пошук відповідного залишку для зв'язку
+        balance_rec = Balance.search(domain, limit=1)
+        if balance_rec:
+            balance_before = balance_rec.qty_on_hand
         # Створюємо запис руху
         movement_vals = {
             'nomenclature_id': nomenclature_id,
@@ -173,13 +202,18 @@ class StockBalanceMovement(models.Model):
             'employee_to_id': employee_to_id,
             'location_from_id': location_from_id,
             'location_to_id': location_to_id,
+            'balance_before': balance_before,
+            'balance_id': balance_rec.id if balance_rec else False,
         }
-        
         movement = self.create(movement_vals)
-        
         # Оновлюємо баланси
         self._update_balances_from_movement(movement)
-        
+        # Визначаємо залишок після руху
+        balance_rec_after = Balance.search(domain, limit=1)
+        if balance_rec_after:
+            movement.balance_after = balance_rec_after.qty_on_hand
+        else:
+            movement.balance_after = 0.0
         return movement
 
     def _update_balances_from_movement(self, movement):

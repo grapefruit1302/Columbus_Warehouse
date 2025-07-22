@@ -111,6 +111,13 @@ class StockBalance(models.Model):
         store=True
     )
 
+    stock_balance_movement_ids = fields.One2many(
+        'stock.balance.movement',
+        'balance_id',
+        string='Рухи залишків',
+        readonly=True
+    )
+
     _sql_constraints = [
         ('unique_balance_record', 
          'unique(nomenclature_id, location_type, warehouse_id, location_id, employee_id, batch_id, company_id)', 
