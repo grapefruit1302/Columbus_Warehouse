@@ -9,8 +9,8 @@
                 <sheet>
                     <div class="oe_title">
                         <h1><field name="nomenclature_id" readonly="1"/></h1>
+                        <field name="tracking_serial" invisible="1"/>
                     </div>
-                    
                     <group>
                         <group>
                             <field name="location_type" widget="radio" readonly="1"/>
@@ -26,30 +26,17 @@
                             <field name="last_update" readonly="1"/>
                         </group>
                     </group>
-
-                    <group string="Серійні номери">
-                        <field name="serial_line_ids" nolabel="1">
-                            <list string="Серійні номери" create="false" edit="false" delete="false">
-                                <field name="serial_number" string="Серійний номер"/>
-                                <field name="batch_number" string="Партія" optional="show"/>
-                                <field name="document_reference" string="Документ" optional="show"/>
-                                <field name="source_document_type" string="Тип документу" optional="show"/>
-                                <field name="date_created" string="Дата" widget="datetime" optional="hide"/>
-                            </list>
-                        </field>
-                    </group>
                     <notebook>
-                        <page string="Серійні номери">
-                            <field name="serial_line_ids" readonly="1"/>
-                        </page>
-                        <page string="Історія змін">
-                            <field name="nomenclature_id" invisible="1"/>
-                            <field name="batch_id" invisible="1"/>
-                            <field name="warehouse_id" invisible="1"/>
-                            <field name="employee_id" invisible="1"/>
-                            <field name="company_id" invisible="1"/>
-                            <field name="location_type" invisible="1"/>
-                            <field name="stock_balance_movement_ids" context="{'default_nomenclature_id': nomenclature_id, 'default_batch_id': batch_id, 'default_warehouse_id': warehouse_id, 'default_employee_id': employee_id, 'default_company_id': company_id, 'default_location_type': location_type}" readonly="1"/>
+                        <page string="Серійні номери" invisible="not tracking_serial">
+                            <field name="serial_line_ids" nolabel="1">
+                                <list string="Серійні номери" create="false" edit="false" delete="false">
+                                    <field name="serial_number" string="Серійний номер"/>
+                                    <field name="batch_number" string="Партія" optional="show"/>
+                                    <field name="document_reference" string="Документ" optional="show"/>
+                                    <field name="source_document_type" string="Тип документу" optional="show"/>
+                                    <field name="date_created" string="Дата" widget="datetime" optional="hide"/>
+                                </list>
+                            </field>
                         </page>
                     </notebook>
                 </sheet>
@@ -98,7 +85,7 @@
                         string="Переглянути S/N" 
                         icon="fa-barcode" 
                         class="btn btn-sm btn-primary"
-                        invisible="serial_count == 0"
+                        invisible="serial_count == 0 or not tracking_serial"
                         title="Переглянути серійні номери"/>
                 
                 <field name="last_update" optional="hide" widget="datetime"/>
@@ -177,6 +164,7 @@
             <form string="Рух залишків" create="false" edit="false">
                 <sheet>
                     <group>
+                        <field name="tracking_serial" invisible="1"/>
                         <group name="main_info">
                             <field name="nomenclature_id" readonly="1"/>
                             <field name="movement_type" readonly="1"/>
@@ -212,7 +200,7 @@
                     <group string="Додаткова інформація">
                         <field name="batch_id" readonly="1"/>
                         <field name="notes" widget="text" readonly="1"/>
-                        <field name="serial_numbers" widget="text" readonly="1" invisible="not serial_numbers"/>
+                        <field name="serial_numbers" widget="text" readonly="1" invisible="not tracking_serial"/>
                     </group>
                 </sheet>
             </form>
@@ -288,11 +276,138 @@
         </field>
     </record>
 
+    <!-- Stock Balance Kanban View -->
+    <record id="stock_balance_kanban_view" model="ir.ui.view">
+        <field name="name">stock.balance.kanban</field>
+        <field name="model">stock.balance</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_stock_balance" default_group_by="nomenclature_id" create="false">
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card oe_kanban_global_click o_kanban_card_balance" style="border-left: 4px solid #1976d2; box-shadow: 0 2px 8px rgba(25,118,210,0.08); transition: box-shadow 0.2s;">
+                            <div class="o_kanban_primary_left">
+                                <strong style="font-size: 1.1em; color: #1976d2;">
+                                    <i class="fa fa-cube"/> <field name="nomenclature_id"/>
+                                </strong>
+                                <div style="margin-top: 4px;">
+                                    <t t-if="record.location_type &amp;&amp; record.location_type.raw_value == 'warehouse'">
+                                        <span class="badge badge-info"><i class="fa fa-archive"/> <field name="warehouse_id"/></span>
+                                    </t>
+                                    <t t-if="record.location_type &amp;&amp; record.location_type.raw_value == 'employee'">
+                                        <span class="badge badge-warning"><i class="fa fa-user"/> <field name="employee_id"/></span>
+                                    </t>
+                                    <t t-if="record.batch_id &amp;&amp; record.batch_id.raw_value">
+                                        <span class="badge badge-secondary"><i class="fa fa-hashtag"/> <field name="batch_id"/></span>
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="o_kanban_primary_right" style="text-align: right;">
+                                <div>
+                                    <span class="o_stat_value" style="font-size: 1.6em; color: #388e3c;">
+                                        <i class="fa fa-balance-scale"/> <field name="qty_available"/>
+                                    </span>
+                                    <span class="o_stat_text">
+                                        <field name="uom_id"/>
+                                    </span>
+                                </div>
+                                <div style="margin-top: 4px;">
+                                    <t t-if="record.serial_count &amp;&amp; record.serial_count.raw_value &gt; 0">
+                                        <span class="badge badge-success">
+                                            <i class="fa fa-barcode"/> S/N: <field name="serial_count"/>
+                                        </span>
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="o_kanban_secondary_bottom mt8" style="margin-top: 8px;">
+                                <small class="text-muted">
+                                    <i class="fa fa-clock-o"/> <field name="last_update"/>
+                                </small>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Stock Balance Movement Kanban View -->
+    <record id="stock_balance_movement_kanban_view" model="ir.ui.view">
+        <field name="name">stock.balance.movement.kanban</field>
+        <field name="model">stock.balance.movement</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_stock_balance_movement" default_group_by="movement_type" create="false">
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card oe_kanban_global_click o_kanban_card_movement" style="border-left: 4px solid #ffa000; box-shadow: 0 2px 8px rgba(255,160,0,0.08); transition: box-shadow 0.2s;">
+                            <div class="o_kanban_primary_left">
+                                <strong style="font-size: 1.1em; color: #ffa000;">
+                                    <i class="fa fa-exchange"/> <field name="nomenclature_id"/>
+                                </strong>
+                                <div style="margin-top: 4px;">
+                                    <span class="badge badge-info"><i class="fa fa-tag"/> <field name="operation_type"/></span>
+                                    <t t-if="record.batch_id &amp;&amp; record.batch_id.raw_value">
+                                        <span class="badge badge-secondary"><i class="fa fa-hashtag"/> <field name="batch_id"/></span>
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="o_kanban_primary_right" style="text-align: right;">
+                                <div>
+                                    <span class="o_stat_value" style="font-size: 1.3em; color: #1976d2;">
+                                        <i class="fa fa-cubes"/> <field name="qty"/>
+                                    </span>
+                                    <span class="o_stat_text">
+                                        <field name="uom_id"/>
+                                    </span>
+                                </div>
+                                <div style="margin-top: 4px;">
+                                    <t t-if="record.movement_type and record.movement_type.raw_value == 'in'">
+                                        <span class="badge badge-success"><i class="fa fa-random"/> <field name="movement_type"/></span>
+                                    </t>
+                                    <t t-elif="record.movement_type and record.movement_type.raw_value == 'out'">
+                                        <span class="badge badge-danger"><i class="fa fa-random"/> <field name="movement_type"/></span>
+                                    </t>
+                                    <t t-elif="record.movement_type and (record.movement_type.raw_value == 'transfer_in' or record.movement_type.raw_value == 'transfer_out')">
+                                        <span class="badge badge-info"><i class="fa fa-random"/> <field name="movement_type"/></span>
+                                    </t>
+                                    <t t-else="">
+                                        <span class="badge badge-warning"><i class="fa fa-random"/> <field name="movement_type"/></span>
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="o_kanban_secondary_bottom mt8" style="margin-top: 8px;">
+                                <small class="text-muted">
+                                    <i class="fa fa-clock-o"/> <field name="date"/>
+                                    <t t-if="record.document_reference &amp;&amp; record.document_reference.raw_value">
+                                        | <i class="fa fa-file-text-o"/> <field name="document_reference"/>
+                                    </t>
+                                </small>
+                                <div style="margin-top: 4px;">
+                                    <t t-if="record.location_from_type &amp;&amp; record.location_from_type.raw_value">
+                                        <span class="text-muted">
+                                            <i class="fa fa-arrow-left"/> <field name="warehouse_from_id"/>
+                                            <field name="employee_from_id"/>
+                                        </span>
+                                    </t>
+                                    <t t-if="record.location_to_type &amp;&amp; record.location_to_type.raw_value">
+                                        <span class="text-muted">
+                                            <i class="fa fa-arrow-right"/> <field name="warehouse_to_id"/>
+                                            <field name="employee_to_id"/>
+                                        </span>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <!-- Actions -->
     <record id="action_stock_balance" model="ir.actions.act_window">
         <field name="name">Залишки товарів</field>
         <field name="res_model">stock.balance</field>
-        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="view_mode">kanban,list,form,pivot,graph</field>
         <field name="search_view_id" ref="stock_balance_search_view"/>
         <field name="context">{'search_default_with_qty': 1}</field>
         <field name="help" type="html">
@@ -304,12 +419,13 @@
                 Ви можете переглянути залишки на складах та у працівників.
             </p>
         </field>
+        <field name="view_id" ref="stock_balance_kanban_view"/>
     </record>
 
     <record id="action_stock_balance_movement" model="ir.actions.act_window">
         <field name="name">Рухи залишків</field>
         <field name="res_model">stock.balance.movement</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">kanban,list,form</field>
         <field name="search_view_id" ref="stock_balance_movement_search_view"/>
         <field name="context">{'search_default_this_month': 1}</field>
         <field name="help" type="html">
@@ -321,6 +437,7 @@
                 надходження, списання, переміщення та коригування.
             </p>
         </field>
+        <field name="view_id" ref="stock_balance_movement_kanban_view"/>
     </record>
 
     <!-- Analysis Actions -->

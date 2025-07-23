@@ -2,6 +2,9 @@ from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 class StockBalanceReportWizard(models.TransientModel):
+    """
+    Wizard для формування звітів по залишках (зведений, детальний, по працівниках, складах, партіях).
+    """
     _name = 'stock.balance.report.wizard'
     _description = 'Wizard для звітів по залишках'
 
@@ -11,67 +14,60 @@ class StockBalanceReportWizard(models.TransientModel):
         ('by_employee', 'По працівниках'),
         ('by_warehouse', 'По складах'),
         ('by_batch', 'По партіях'),
-    ], 'Тип звіту', required=True, default='summary')
-
-    date_from = fields.Date('Дата з', required=True, default=fields.Date.today)
-    date_to = fields.Date('Дата по', required=True, default=fields.Date.today)
-
+    ], string='Тип звіту', required=True, default='summary')
+    date_from = fields.Date(string='Дата з', required=True, default=fields.Date.today)
+    date_to = fields.Date(string='Дата по', required=True, default=fields.Date.today)
     company_id = fields.Many2one(
         'res.company', 
-        'Компанія',
+        string='Компанія',
         required=True,
         default=lambda self: self.env.company
     )
-
     warehouse_ids = fields.Many2many(
         'stock.warehouse',
         'balance_report_warehouse_rel',
         'wizard_id',
         'warehouse_id',
-        'Склади'
+        string='Склади'
     )
-
     employee_ids = fields.Many2many(
         'hr.employee',
         'balance_report_employee_rel',
+
         'wizard_id',
         'employee_id',
-        'Працівники'
+        string='Працівники'
     )
-
     nomenclature_ids = fields.Many2many(
         'product.nomenclature',
         'balance_report_nomenclature_rel',
         'wizard_id',
         'nomenclature_id',
-        'Номенклатура'
+        string='Номенклатура'
     )
-
     category_ids = fields.Many2many(
         'product.nomenclature.category',
         'balance_report_category_rel',
         'wizard_id',
         'category_id',
-        'Категорії товарів'
+        string='Категорії товарів'
     )
-
     show_zero_qty = fields.Boolean(
-        'Показувати нульові залишки',
+        string='Показувати нульові залишки',
         default=False
     )
-
     show_movements = fields.Boolean(
-        'Показувати рухи',
+        string='Показувати рухи',
         default=False
     )
 
     def action_generate_report(self):
-        """Генерує звіт по залишках"""
+        """
+        Генерує звіт по залишках відповідно до вибраного типу.
+        """
         self.ensure_one()
-        
         domain = self._get_balance_domain()
         balances = self.env['stock.balance'].search(domain)
-        
         if self.report_type == 'by_employee':
             return self._generate_employee_report(balances)
         elif self.report_type == 'by_warehouse':
@@ -82,28 +78,26 @@ class StockBalanceReportWizard(models.TransientModel):
             return self._generate_summary_report(balances)
 
     def _get_balance_domain(self):
-        """Формує domain для пошуку залишків"""
+        """
+        Формує domain для пошуку залишків згідно з вибраними фільтрами.
+        """
         domain = [('company_id', '=', self.company_id.id)]
-        
         if not self.show_zero_qty:
             domain.append(('qty_available', '>', 0))
-        
         if self.warehouse_ids:
             domain.append(('warehouse_id', 'in', self.warehouse_ids.ids))
-        
         if self.employee_ids:
             domain.append(('employee_id', 'in', self.employee_ids.ids))
-        
         if self.nomenclature_ids:
             domain.append(('nomenclature_id', 'in', self.nomenclature_ids.ids))
-        
         if self.category_ids:
             domain.append(('nomenclature_id.category_id', 'child_of', self.category_ids.ids))
-        
         return domain
 
     def _generate_summary_report(self, balances):
-        """Генерує зведений звіт"""
+        """
+        Генерує зведений звіт по залишках.
+        """
         return {
             'type': 'ir.actions.act_window',
             'name': 'Зведений звіт по залишках',
@@ -117,9 +111,10 @@ class StockBalanceReportWizard(models.TransientModel):
         }
 
     def _generate_employee_report(self, balances):
-        """Генерує звіт по працівниках"""
+        """
+        Генерує звіт по залишках у працівників.
+        """
         employee_balances = balances.filtered(lambda b: b.location_type == 'employee')
-        
         return {
             'type': 'ir.actions.act_window',
             'name': 'Звіт по залишках у працівників',
@@ -133,9 +128,10 @@ class StockBalanceReportWizard(models.TransientModel):
         }
 
     def _generate_warehouse_report(self, balances):
-        """Генерує звіт по складах"""
+        """
+        Генерує звіт по залишках на складах.
+        """
         warehouse_balances = balances.filtered(lambda b: b.location_type == 'warehouse')
-        
         return {
             'type': 'ir.actions.act_window',
             'name': 'Звіт по залишках на складах',
@@ -149,9 +145,10 @@ class StockBalanceReportWizard(models.TransientModel):
         }
 
     def _generate_batch_report(self, balances):
-        """Генерує звіт по партіях"""
+        """
+        Генерує звіт по залишках партій.
+        """
         batch_balances = balances.filtered(lambda b: b.batch_id)
-        
         return {
             'type': 'ir.actions.act_window',
             'name': 'Звіт по залишках партій',
@@ -164,56 +161,50 @@ class StockBalanceReportWizard(models.TransientModel):
             }
         }
 
-
 class StockBalanceAdjustmentWizard(models.TransientModel):
+    """
+    Wizard для коригування залишків (ручне внесення змін).
+    """
     _name = 'stock.balance.adjustment.wizard'
     _description = 'Wizard для коригування залишків'
 
     nomenclature_id = fields.Many2one(
         'product.nomenclature',
-        'Номенклатура',
+        string='Номенклатура',
         required=True
     )
-
     location_type = fields.Selection([
         ('warehouse', 'Склад'),
         ('employee', 'Працівник'),
-    ], 'Тип локації', required=True, default='warehouse')
-
+    ], string='Тип локації', required=True, default='warehouse')
     warehouse_id = fields.Many2one(
         'stock.warehouse',
-        'Склад',
+        string='Склад',
         required=False
     )
-
     employee_id = fields.Many2one(
         'hr.employee',
-        'Працівник',
+        string='Працівник',
         required=False
     )
-
     batch_id = fields.Many2one(
         'stock.batch',
-        'Партія'
+        string='Партія'
     )
-
     current_qty = fields.Float(
-        'Поточна кількість',
+        string='Поточна кількість',
         readonly=True
     )
-
     new_qty = fields.Float(
-        'Нова кількість',
+        string='Нова кількість',
         required=True
     )
-
     adjustment_qty = fields.Float(
-        'Коригування',
+        string='Коригування',
         compute='_compute_adjustment_qty'
     )
-
     reason = fields.Text(
-        'Причина коригування',
+        string='Причина коригування',
         required=True
     )
 
@@ -224,10 +215,11 @@ class StockBalanceAdjustmentWizard(models.TransientModel):
 
     @api.onchange('nomenclature_id', 'location_type', 'warehouse_id', 'employee_id', 'batch_id')
     def _onchange_location(self):
-        """Оновлює поточну кількість при зміні локації"""
+        """
+        Оновлює поточну кількість при зміні локації/номенклатури/партії.
+        """
         if self.nomenclature_id:
             Balance = self.env['stock.balance']
-            
             if self.location_type == 'warehouse' and self.warehouse_id:
                 self.current_qty = Balance.get_available_qty(
                     nomenclature_id=self.nomenclature_id.id,
@@ -246,15 +238,13 @@ class StockBalanceAdjustmentWizard(models.TransientModel):
                 self.current_qty = 0.0
 
     def action_apply_adjustment(self):
-        """Застосовує коригування залишків"""
+        """
+        Застосовує коригування залишків (створює рух типу adjustment).
+        """
         self.ensure_one()
-        
         if self.adjustment_qty == 0:
             raise ValidationError(_('Коригування дорівнює нулю. Немає змін для застосування.'))
-        
-        # Створюємо рух коригування
         movement_type = 'in' if self.adjustment_qty > 0 else 'out'
-        
         movement_vals = {
             'nomenclature_id': self.nomenclature_id.id,
             'qty': abs(self.adjustment_qty),
@@ -265,7 +255,6 @@ class StockBalanceAdjustmentWizard(models.TransientModel):
             'document_reference': f'Коригування #{self.id}',
             'notes': self.reason,
         }
-        
         if self.location_type == 'warehouse':
             movement_vals.update({
                 'location_to_type': 'warehouse' if movement_type == 'in' else None,
@@ -282,9 +271,7 @@ class StockBalanceAdjustmentWizard(models.TransientModel):
                 'employee_to_id': self.employee_id.id if movement_type == 'in' else None,
                 'employee_from_id': self.employee_id.id if movement_type == 'out' else None,
             })
-        
         self.env['stock.balance.movement'].create_movement(**movement_vals)
-        
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',

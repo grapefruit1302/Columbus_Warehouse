@@ -57,10 +57,60 @@
             </field>
         </record>
 
+        <!-- Stock Serial Report Kanban View -->
+        <record id="stock_serial_report_kanban_view" model="ir.ui.view">
+            <field name="name">stock.serial.report.kanban</field>
+            <field name="model">stock.serial.report</field>
+            <field name="arch" type="xml">
+                <kanban class="o_kanban_serial_report" default_group_by="nomenclature_name" create="false">
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div class="oe_kanban_card oe_kanban_global_click o_kanban_card_serial" style="border-left: 4px solid #43a047; box-shadow: 0 2px 8px rgba(67,160,71,0.08); transition: box-shadow 0.2s;">
+                                <div class="o_kanban_primary_left">
+                                    <strong style="font-size: 1.1em; color: #43a047;">
+                                        <i class="fa fa-cube"/> <field name="nomenclature_name"/>
+                                    </strong>
+                                    <div style="margin-top: 4px;">
+                                        <span class="badge badge-info"><i class="fa fa-barcode"/> <field name="serial_number"/></span>
+                                        <t t-if="record.batch_number &amp;&amp; record.batch_number.raw_value">
+                                            <span class="badge badge-secondary"><i class="fa fa-hashtag"/> <field name="batch_number"/></span>
+                                        </t>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_primary_right" style="text-align: right;">
+                                    <div>
+                                        <span class="o_stat_value" style="font-size: 1.2em; color: #1976d2;">
+                                            <i class="fa fa-balance-scale"/> <field name="qty_available"/>
+                                        </span>
+                                    </div>
+                                    <div style="margin-top: 4px;">
+                                        <span class="badge badge-info"><i class="fa fa-map-marker"/> <field name="location_type"/></span>
+                                        <span class="badge badge-light"><i class="fa fa-archive"/> <field name="warehouse_name"/></span>
+                                        <span class="badge badge-light"><i class="fa fa-user"/> <field name="employee_name"/></span>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_secondary_bottom mt8" style="margin-top: 8px;">
+                                    <small class="text-muted">
+                                        <t t-if="record.document_reference &amp;&amp; record.document_reference.raw_value">
+                                            <i class="fa fa-file-text-o"/> <field name="document_reference"/>
+                                        </t>
+                                        <t t-if="record.source_document_type &amp;&amp; record.source_document_type.raw_value">
+                                            | <i class="fa fa-tag"/> <field name="source_document_type"/>
+                                        </t>
+                                    </small>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
         <record id="action_stock_serial_report" model="ir.actions.act_window">
             <field name="name">Всі серійні номери в системі</field>
             <field name="res_model">stock.serial.report</field>
-            <field name="view_mode">list</field>
+            <field name="view_mode">kanban,list</field>
+            <field name="view_id" ref="stock_serial_report_kanban_view"/>
             <field name="search_view_id" ref="view_stock_serial_report_search"/>
             <field name="context">{'search_default_warehouse_only': 1}</field>
             <field name="help" type="html">
